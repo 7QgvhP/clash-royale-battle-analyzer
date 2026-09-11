@@ -13,7 +13,7 @@
 """
 import re
 
-from src.api.cardstats import BASE_LEVEL, LEVEL_FACTOR
+from src.api.cardstats import BASE_LEVEL, LEVEL_FACTOR, STAGE_SEP, base_stat
 
 # ゲーム内で表示されるレベルの上限
 GAME_MAX_LEVEL = 16
@@ -107,6 +107,14 @@ WORD_LABELS = {
     "Melee": "近接", "Ground": "地上", "Air": "空中", "Buildings": "建物のみ",
 }
 
+# 段階の呼び名。数字の接頭辞は通常「時間経過でダメージが上がる段階」を指すが、
+# カードによって意味が違うため、そこだけ英語カード名で上書きする。
+# 既定は「N段階目」。
+STAGE_LABELS = {
+    # ボイドの 1/3/5 は段階ではなく、命中した敵の数による違い
+    "Void": {"1": "1体に命中", "3": "2〜4体に命中", "5": "5体以上に命中"},
+}
+
 # カードが出す別ユニットの表示名。ここに無いものは元の綴りのまま出す。
 UNIT_LABELS = {
     "golem": "ゴーレム本体", "mite": "ゴーレマイト", "skel": "スケルトン",
@@ -148,6 +156,30 @@ def unit_name(prefix):
     return UNIT_LABELS.get(key, prefix.rstrip("_"))
 
 
+def stage_label(stage, card_name_en=None):
+    """段階の呼び名を返す。"""
+    return STAGE_LABELS.get(card_name_en or "", {}).get(stage, f"{stage}段階目")
+
+
+def stat_label(key, card_name_en=None):
+    """数値項目の表示名。段階付きのキーは括弧で段階を添える。"""
+    base, _, stage = key.partition(STAGE_SEP)
+    label = STAT_LABELS.get(base, base)
+    return f"{label}（{stage_label(stage, card_name_en)}）" if stage else label
+
+
+def _order(key):
+    """表示順。種類の並び順が先、同じ種類なら段階の小さい順。"""
+    base, _, stage = key.partition(STAGE_SEP)
+    index = SCALED.index(base) if base in SCALED else len(SCALED)
+    return (index, int(stage) if stage.isdigit() else 0)
+
+
+def scaled_keys(unit):
+    """そのユニットが持つ、レベルで変わる項目のキーを表示順に返す。"""
+    return sorted((k for k in unit if base_stat(k) in SCALED), key=_order)
+
+
 def _dps(damage, atk_speed):
     """秒間ダメージ。攻撃速度が無い、または0なら出さない。"""
     if not damage or not atk_speed:
@@ -155,38 +187,83 @@ def _dps(damage, atk_speed):
     return round(damage / atk_speed)
 
 
-def unit_rows(unit, level):
+def _speed_keys(unit):
+    """そのユニットが持つ攻撃速度のキーを表示順に返す。"""
+    return sorted((k for k in unit if base_stat(k) == "atk_speed"), key=_order)
+
+
+def dps_pairs(unit):
+    """秒間ダメージを出せる（ダメージ, 攻撃速度）の組を返す。
+
+    段階の付き方はカードで異なる。インフェルノタワーはダメージ側が段階を持ち、
+    リトルプリンスは攻撃速度側だけが段階を持つ。どちらの場合も段階ごとの
+    秒間ダメージが出るように組み合わせる。
+    """
+    speeds = _speed_keys(unit)
+    if not speeds:
+        return []
+
+    pairs = []
+    for dmg_key in (k for k in scaled_keys(unit) if base_stat(k) == "dmg"):
+        _, _, stage = dmg_key.partition(STAGE_SEP)
+        if stage:
+            # 同じ段階の速度があればそれを使い、無ければ共通の速度を使う
+            same = f"atk_speed{STAGE_SEP}{stage}"
+            pairs.append((dmg_key, same if same in unit else speeds[0]))
+        else:
+            # ダメージは一定で速度だけが段階で変わる場合、段階の数だけ出す
+            pairs.extend((dmg_key, sk) for sk in speeds)
+    return pairs
+
+
+def dps_label(dmg_key, speed_key, card_name_en=None):
+    """秒間ダメージの表示名。段階はダメージ側を優先し、無ければ速度側を使う。"""
+    _, _, stage = dmg_key.partition(STAGE_SEP)
+    if not stage:
+        _, _, stage = speed_key.partition(STAGE_SEP)
+    label = "秒間ダメージ"
+    return f"{label}（{stage_label(stage, card_name_en)}）" if stage else label
+
+
+def unit_rows(unit, level, card_name_en=None):
     """1ユニット分の、指定レベルでの数値を並べる。"""
-    rows = []
-    for key in SCALED:
-        if unit.get(key) is None:
-            continue
-        rows.append({"label": STAT_LABELS.get(key, key), "value": scale(unit[key], level)})
-    dps = _dps(scale(unit.get("dmg"), level), unit.get("atk_speed"))
-    if dps is not None:
-        rows.append({"label": "秒間ダメージ", "value": dps})
+    rows = [{"label": stat_label(k, card_name_en), "value": scale(unit[k], level)}
+            for k in scaled_keys(unit)]
+    for dmg_key, speed_key in dps_pairs(unit):
+        rows.append({"label": dps_label(dmg_key, speed_key, card_name_en),
+                     "value": _dps(scale(unit[dmg_key], level), unit[speed_key])})
     return rows
 
 
-def level_table(unit, levels):
+def fixed_rows(unit, card_name_en=None):
+    """レベルで変わらない値。攻撃速度が段階ごとに違うカードにも対応する。"""
+    rows = []
+    for key in _speed_keys(unit):
+        _, _, stage = key.partition(STAGE_SEP)
+        label = "攻撃速度"
+        if stage:
+            label += f"（{stage_label(stage, card_name_en)}）"
+        rows.append({"label": label, "value": unit[key]})
+    return rows
+
+
+def level_table(unit, levels, card_name_en=None):
     """ユニットのレベル別の数値表を組み立てる。
 
     列はそのユニットが実際に持っている項目だけにする。全カード共通の列を
     並べると、大半が空欄の表になって読み取りづらい。
     """
-    keys = [k for k in SCALED if unit.get(k) is not None]
-    columns = [STAT_LABELS.get(k, k) for k in keys]
-    has_dps = unit.get("dmg") is not None and unit.get("atk_speed")
-    if has_dps:
-        columns.append("秒間ダメージ")
+    keys = scaled_keys(unit)
+    dps = dps_pairs(unit)
+    columns = [stat_label(k, card_name_en) for k in keys]
+    columns += [dps_label(d, sp, card_name_en) for d, sp in dps]
 
     rows = []
     for level in levels:
         # キー名を values にすると、テンプレート側で辞書の values() が
         # 優先されてしまうため cells とする
         cells = [scale(unit[k], level) for k in keys]
-        if has_dps:
-            cells.append(_dps(scale(unit["dmg"], level), unit["atk_speed"]))
+        cells += [_dps(scale(unit[d], level), unit[sp]) for d, sp in dps]
         rows.append({"level": level, "cells": cells})
     return {"columns": columns, "rows": rows}
 
@@ -236,9 +313,9 @@ def card_detail(conn, card_id, level=BASE_LEVEL):
         for unit in stats.get("units", []):
             units.append({
                 "name": unit_name(unit.get("prefix")),
-                "atk_speed": unit.get("atk_speed"),
-                "rows": unit_rows(unit, shown),
-                "table": level_table(unit, levels),
+                "rows": unit_rows(unit, shown, card["name_en"]),
+                "fixed": fixed_rows(unit, card["name_en"]),
+                "table": level_table(unit, levels, card["name_en"]),
             })
 
     return {

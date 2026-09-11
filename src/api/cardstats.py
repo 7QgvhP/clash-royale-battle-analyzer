@@ -52,6 +52,9 @@ LEVEL_FACTOR = 1.1
 SCALING_STATS = ("hp", "dmg", "crown_dmg", "death", "spawn", "charge",
                  "dash", "heal", "shield", "crown")
 
+# 段階別の値を表すときの区切り。dmg#2 で「2段階目のダメージ」を意味する。
+STAGE_SEP = "#"
+
 
 def _request(titles):
     """複数ページの wikitext をまとめて取得する。"""
@@ -183,28 +186,43 @@ def _split_prefix(name):
     return None, None
 
 
+def base_stat(key):
+    """段階付きのキーから、もとの種類だけを取り出す。dmg#2 -> dmg"""
+    return key.split(STAGE_SEP)[0]
+
+
 def build_units(variables):
-    """変数をユニット単位にまとめる。先頭が本体、以降がそのカードが出すユニット。"""
+    """変数をユニット単位にまとめる。先頭が本体、以降がそのカードが出すユニット。
+
+    接頭辞が数字のものは別のユニットではなく、本体の「段階別の値」を指す。
+    インフェルノタワーの 1_dmg_11 / 2_dmg_11 / 3_dmg_11 は時間経過で上がる
+    ダメージであり、ボイドの 1/3/5 は命中した敵の数による違いである。
+    いずれも1体のユニットの話なので、本体に dmg#1 のような形で束ねる。
+    """
     units = {}
+
+    def put(prefix, stat, value):
+        if prefix and prefix.isdigit():
+            units.setdefault("", {})[f"{stat}{STAGE_SEP}{prefix}"] = value
+        else:
+            units.setdefault(prefix, {})[stat] = value
+
     for name, value in variables.items():
         if name.endswith(("_11", "_base")):
             prefix, stat = _split_prefix(name)
-            if stat is None:
-                continue
-            units.setdefault(prefix, {})[stat] = value
+            if stat is not None:
+                put(prefix, stat, value)
 
     # 攻撃速度はレベルで変わらないため別枠。接頭辞の付き方は変数側に合わせる。
     for name, value in variables.items():
         if name.endswith("atk_speed"):
-            prefix = name[:-len("atk_speed")].rstrip("_")
-            units.setdefault(prefix, {})["atk_speed"] = value
+            put(name[:-len("atk_speed")].rstrip("_"), "atk_speed", value)
 
-    # HPもダメージも無いものはユニットではない。たとえば攻撃段階ごとの速度
-    # （1_atk_speed / 2_atk_speed）が該当するため、ユニットとして並べない。
+    # HPもダメージも無いものはユニットではない
     ordered, leftovers = [], {}
     for prefix in sorted(units, key=lambda p: (p != "", p)):
         unit = units[prefix]
-        if "hp" not in unit and "dmg" not in unit:
+        if not any(base_stat(k) in ("hp", "dmg") for k in unit):
             leftovers.update({f"{prefix}_{k}" if prefix else k: v
                               for k, v in unit.items()})
             continue

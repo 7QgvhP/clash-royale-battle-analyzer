@@ -55,13 +55,13 @@
       <div class="metric-value">{{ row.value }}</div>
     </div>
     {% endfor %}
-    {% if u.atk_speed %}
+    {% for f in u.fixed %}
     <div class="metric">
-      <div class="metric-label">攻撃速度</div>
-      <div class="metric-value">{{ u.atk_speed }}<span style="font-size:14px">秒</span></div>
+      <div class="metric-label">{{ f.label }}</div>
+      <div class="metric-value">{{ f.value }}<span style="font-size:14px">秒</span></div>
       <div class="metric-sub">レベルで変わらない</div>
     </div>
-    {% endif %}
+    {% endfor %}
   </div>
 {% endfor %}
 {% endif %}
