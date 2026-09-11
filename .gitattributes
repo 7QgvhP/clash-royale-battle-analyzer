@@ -1,0 +1,7 @@
+# 改行コードはLFで統一する。Windows上の編集でCRLFに変わると
+# 差分が全行になり、変更箇所が追えなくなるため。
+* text=auto eol=lf
+
+# PowerShellスクリプトはCRLF。日本語を含むため、BOM付きUTF-8と
+# あわせてWindows側の期待に合わせる必要がある。
+*.ps1 text eol=crlf
