@@ -51,6 +51,10 @@ publish:
   # Cloudflare Pages のプロジェクト名。公開URLは
   # https://<project_name>.pages.dev/<推測困難な文字列>/ になる。
   project_name: "cr-analyzer"
+  # Cloudflare Pages の本番ブランチ名。wrangler は git リポジトリの中で実行すると
+  # ローカルのブランチ名を配信先として扱うため、ここと食い違うとプレビュー配信になり
+  # 公開URLに反映されない。プロジェクト作成時の本番ブランチ名に合わせること。
+  branch: "production"
   # 公開サイトの対戦履歴に載せる件数。全件を出すと絞り込みの組み合わせ分だけ
   # ページが肥大するため上限を設ける。増やすと1ページの読み込みが重くなる。
   history_limit: 100

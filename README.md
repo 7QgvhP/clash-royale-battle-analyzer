@@ -2,7 +2,7 @@
 
 クラッシュロワイヤルの対戦履歴を自動で蓄積し、勝率・苦手カード・デッキ相性を分析するローカルツール。
 
-- **バージョン**: v1.9.0
+- **バージョン**: v1.9.1
 - **現在の状況**: 実装済み・稼働確認済み
 - **要件定義書**: [docs/requirements.md](docs/requirements.md)
 
@@ -297,6 +297,7 @@ Safariで開いて「ホーム画面に追加」すると、アイコンから�
 - `web.port` — ダッシュボードのポート（既定8730）
 - `publish.enabled` / `publish.project_name` — 公開の有効化とプロジェクト名
 - `publish.history_limit` — 公開サイトに載せる対戦履歴の件数（既定100）
+- `publish.branch` — Cloudflare Pages の本番ブランチ名（既定 production）。wrangler は git リポジトリ内だとローカルのブランチ名を配信先として扱うため、食い違うとプレビュー配信になり公開URLに反映されない
 - `level_bucket_step` — レベル差を集計する刻み幅（既定0.25、最小0.125）
 - `level_trend_window` — 傾向線をならす範囲。v1.8.0 で傾向線を廃止したため**現在は未使用**
 

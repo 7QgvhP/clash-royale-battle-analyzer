@@ -20,14 +20,20 @@ from src.db import repository as repo
 from src.exporter import static_export
 
 
-def upload(project_name, dist_dir):
-    """wrangler で Cloudflare Pages へアップロードする。"""
+def upload(project_name, dist_dir, branch):
+    """wrangler で Cloudflare Pages へアップロードする。
+
+    --branch を必ず指定する。wrangler は git リポジトリの中で実行されると
+    ローカルのブランチ名を配信先ブランチとして扱うため、プロジェクトの本番
+    ブランチと違う名前だとプレビュー配信になり、公開URLに反映されない。
+    ここを固定しておけば、ローカルのブランチ名に左右されない。
+    """
     # npx 経由で呼ぶことで、wrangler の事前インストールを不要にする。
     command = [
         "npx", "--yes", "wrangler@latest", "pages", "deploy", str(dist_dir),
-        "--project-name", project_name, "--commit-dirty=true",
+        "--project-name", project_name, "--branch", branch, "--commit-dirty=true",
     ]
-    logging.info("アップロードを開始します: %s", project_name)
+    logging.info("アップロードを開始します: %s（ブランチ %s）", project_name, branch)
     result = subprocess.run(command, cwd=str(ROOT), shell=True,
                             capture_output=True, text=True, encoding="utf-8",
                             errors="replace", timeout=900)
@@ -84,7 +90,7 @@ def main(argv=None):
 
         # 秘密ディレクトリを含む dist 全体を上げる。URLは
         # https://<project>.pages.dev/<secret>/ になる。
-        upload(project, static_export.DIST_DIR)
+        upload(project, static_export.DIST_DIR, config.publish_branch)
         secret = repo.get_meta(conn, "static_secret")
         logging.info("公開URL: https://%s.pages.dev/%s/", project, secret)
         return 0

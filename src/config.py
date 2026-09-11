@@ -75,6 +75,9 @@ class Config:
         self.publish_enabled = bool(publish.get("enabled", False))
         self.publish_project = str(publish.get("project_name", "") or "")
         self.publish_history_limit = int(publish.get("history_limit", 100))
+        # Cloudflare Pages の本番ブランチ名。wrangler は git リポジトリ内で
+        # 実行するとローカルのブランチ名を拾い、一致しないとプレビュー配信になる。
+        self.publish_branch = str(publish.get("branch", "production") or "production")
 
         web = self.raw.get("web", {})
         self.web_host = str(web.get("host", "127.0.0.1"))
