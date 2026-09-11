@@ -1,19 +1,27 @@
-{# カード画像。ローカルに保存された画像が無い場合は枠だけを表示する。 #}
+{# カード画像。ローカルに保存された画像が無い場合は枠だけを表示する。
+   card_id があるものは、そのカードの性能値ページへのリンクにする。 #}
 {% macro card_img(card, cls='card-img') %}
   {% if card.icon_path %}
-    <img class="{{ cls }}" src="{{ asset_url('cards/' ~ card.icon_path) }}"
-         alt="{{ card.name }}" title="{{ card.name }}">
+    {% if card.card_id %}<a class="card-link" href="{{ card_url(card.card_id) }}">{% endif %}
+      <img class="{{ cls }}" src="{{ asset_url('cards/' ~ card.icon_path) }}"
+           alt="{{ card.name }}" title="{{ card.name }}">
+    {% if card.card_id %}</a>{% endif %}
   {% else %}
     <span class="{{ cls }} placeholder" title="{{ card.name }}"></span>
   {% endif %}
 {% endmacro %}
 
-{# デッキ8枚を横に並べる。 #}
-{% macro deck_row(cards, cls='deck') %}
+{# デッキ8枚を横に並べる。1枚ずつ性能値ページへ辿れるようにする。
+   linked=false は、行全体が既にリンクになっている場所で使う。
+   リンクの入れ子はHTMLとして成立せず、外側のリンクが壊れるため。 #}
+{% macro deck_row(cards, cls='deck', linked=true) %}
   <span class="{{ cls }}">
     {% for c in cards %}
       {% if c.icon_path %}
-        <img src="{{ asset_url('cards/' ~ c.icon_path) }}" alt="{{ c.name }}" title="{{ c.name }}">
+        {% set link = linked and c.card_id %}
+        {% if link %}<a class="card-link" href="{{ card_url(c.card_id) }}">{% endif %}
+          <img src="{{ asset_url('cards/' ~ c.icon_path) }}" alt="{{ c.name }}" title="{{ c.name }}">
+        {% if link %}</a>{% endif %}
       {% endif %}
     {% endfor %}
   </span>

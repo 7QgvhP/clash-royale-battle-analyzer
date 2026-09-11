@@ -83,6 +83,19 @@ CREATE TABLE IF NOT EXISTS cards (
     evo_icon_path TEXT
 );
 
+-- カードの性能値（HP・ダメージ・射程など）
+-- 公式APIは性能値を返さないため、Clash Royale Wiki (CC BY-SA) から取得する。
+-- カード種別ごとに意味のある項目が違い、列にすると大半がNULLになるため
+-- 正規化した内容をJSONのまま持つ。表示側で種別に応じて出し分ける。
+CREATE TABLE IF NOT EXISTS card_stats (
+    card_id    INTEGER PRIMARY KEY,
+    stats_json TEXT NOT NULL,
+    source     TEXT,
+    source_url TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (card_id) REFERENCES cards (card_id)
+);
+
 -- 自分の使用デッキ
 CREATE TABLE IF NOT EXISTS decks (
     player_tag  TEXT    NOT NULL,

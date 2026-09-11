@@ -19,6 +19,8 @@ CARD_IMAGE_DIR = DATA_DIR / "card_images"
 # 表示サイズに合わせて縮小・WebP化したもの。実際の配信にはこちらを使う。
 CARD_WEB_DIR = DATA_DIR / "card_images_web"
 CARD_NAMES_PATH = ROOT / "src" / "data" / "card_names_ja.json"
+# 自動取得できなかったカード性能値を補うファイル
+CARD_STATS_MANUAL_PATH = ROOT / "src" / "data" / "card_stats_manual.json"
 
 PROXY_BASE = "https://proxy.royaleapi.dev/v1"
 DIRECT_BASE = "https://api.clashroyale.com/v1"

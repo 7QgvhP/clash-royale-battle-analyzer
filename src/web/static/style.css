@@ -556,3 +556,100 @@ body.hide-unreliable tr.unreliable { display: none; }
   padding: 10px 14px; margin: 12px 0; text-align: center;
   overflow-x: auto; white-space: nowrap;
 }
+
+/* ---- カード詳細 ---- */
+
+.card-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.card-hero-img {
+  width: 72px;
+  height: auto;
+  flex: none;
+}
+
+.card-hero-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.card-hero-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+/* カードが複数のユニットを出す場合の、ユニットごとの見出し */
+.unit-name {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.level-pick {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-sub);
+}
+
+.level-pick select {
+  margin-left: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+
+/* 基本情報は項目名と値の2列。項目名を左に固定幅で並べる */
+.attr-table th {
+  width: 42%;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-sub);
+}
+
+/* 選択中のレベルの行を目立たせる */
+.level-row.on {
+  background: var(--accent-soft);
+}
+
+.level-row.on td {
+  font-weight: 600;
+}
+
+.source-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text-mute);
+  background: var(--surface-2);
+  border-radius: 10px;
+}
+
+.source-note a { color: var(--text-sub); }
+
+/* カード画像のリンク。画像そのものの見た目は変えない */
+.card-link {
+  display: inline-block;
+  line-height: 0;
+}
+
+@media (max-width: 640px) {
+  .card-hero-img { width: 56px; }
+  .card-hero-name { font-size: 19px; }
+  .attr-table th { width: 50%; }
+}

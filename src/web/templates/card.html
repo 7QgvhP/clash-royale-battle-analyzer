@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ detail.card.name }} | クラロワ対戦分析{% endblock %}
+
+{# 性能値は絞り込みに依存しないため、共通のフィルタ行は出さない #}
+{% block filters %}{% endblock %}
+
+{% block content %}
+
+{% set d = detail %}
+{% set c = d.card %}
+
+<a class="back-link" href="{{ page_url('cards') }}">← 苦手カードへ戻る</a>
+
+<div class="card-hero">
+  {% if c.icon_path %}
+    <img class="card-hero-img" src="{{ asset_url('cards/' ~ c.icon_path) }}" alt="{{ c.name }}">
+  {% endif %}
+  <div>
+    <h1 class="card-hero-name">{{ c.name }}</h1>
+    <div class="card-hero-meta">
+      {{ c.name_en }}
+      {% if c.rarity %}・{{ c.rarity }}{% endif %}
+      {% if c.elixir_cost %}・コスト {{ c.elixir_cost }}{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if not d.has_stats %}
+  <div class="empty">
+    このカードの性能値をまだ取得していません。<br>
+    <code>python -m src.collector.collect --update-card-stats</code> を実行してください。
+  </div>
+{% else %}
+
+{% if d.units %}
+<h2>性能値
+  <span>
+    <label class="level-pick">レベル
+      <select id="level-select">
+        {% for lv in d.levels %}
+          <option value="{{ lv }}" {% if lv == d.level %}selected{% endif %}>{{ lv }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </span>
+</h2>
+
+{% for u in d.units %}
+  {% if u.name %}<h3 class="unit-name">{{ u.name }}</h3>{% endif %}
+  <div class="metrics">
+    {% for row in u.rows %}
+    <div class="metric">
+      <div class="metric-label">{{ row.label }}</div>
+      <div class="metric-value">{{ row.value }}</div>
+    </div>
+    {% endfor %}
+    {% if u.atk_speed %}
+    <div class="metric">
+      <div class="metric-label">攻撃速度</div>
+      <div class="metric-value">{{ u.atk_speed }}<span style="font-size:14px">秒</span></div>
+      <div class="metric-sub">レベルで変わらない</div>
+    </div>
+    {% endif %}
+  </div>
+{% endfor %}
+{% endif %}
+
+{% if d.attributes %}
+<h2>基本情報</h2>
+<div class="table-wrap">
+<table class="attr-table">
+  <tbody>
+    {% for a in d.attributes %}
+    <tr><th>{{ a.label }}</th><td>{{ a.value }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% for u in d.units %}
+<h2>レベル別の数値{% if u.name %} — {{ u.name }}{% endif %}</h2>
+<div class="table-wrap">
+<table class="level-table">
+  <thead>
+    <tr>
+      <th>レベル</th>
+      {% for col in u.table.columns %}<th class="num">{{ col }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in u.table.rows %}
+    <tr class="level-row {% if row.level == d.level %}on{% endif %}" data-level="{{ row.level }}">
+      <td>{{ row.level }}</td>
+      {% for v in row.cells %}<td class="num">{{ v if v is not none else '--' }}</td>{% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endfor %}
+
+<div class="note">
+  数値は<strong style="font-weight:600">レベル11を基準</strong>に、
+  1レベルごと1.1倍して算出している。出典のページと同じ式なので、
+  リンク先の表と値が一致する。丸めの都合で ±1 程度ずれることがある。<br>
+  射程・移動速度・展開時間などはレベルで変わらないため、基本情報にまとめている。
+</div>
+
+{% if d.source %}
+<div class="source-note">
+  出典: <a href="{{ d.source.url }}" target="_blank" rel="noopener noreferrer">{{ d.source.name }}</a>
+  （{{ d.source.license }}）
+  {% if d.updated_at %}／ 取得 {{ d.updated_at }}{% endif %}<br>
+  公式APIは性能値を提供していないため、再利用が許諾されたこの情報源を用いている。
+  有志が編集する資料のため、値が最新でない可能性がある。
+</div>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if detail.units %}
+<script>
+// レベルを切り替えたら、上の数値カードと表の強調行を合わせる。
+// 値は下の表に全レベル分あるので、そこから取り出すだけでよい。
+(function () {
+  var select = document.getElementById('level-select');
+  if (!select) return;
+
+  function apply(level) {
+    document.querySelectorAll('.level-row').forEach(function (row) {
+      row.classList.toggle('on', row.dataset.level === level);
+    });
+    // 表の該当行の値を、対応する数値カードへ写す。
+    // 基本情報の表を数に含めるとユニットとの対応がずれるため、
+    // レベル別の表だけを対象にする。並び順は .metrics と同じ。
+    document.querySelectorAll('table.level-table').forEach(function (table, index) {
+      var row = table.querySelector('.level-row[data-level="' + level + '"]');
+      if (!row) return;
+      var heads = [].slice.call(table.querySelectorAll('thead th')).slice(1)
+                    .map(function (th) { return th.textContent.trim(); });
+      var cells = [].slice.call(row.querySelectorAll('td')).slice(1);
+      var group = document.querySelectorAll('.metrics')[index];
+      if (!group) return;
+      group.querySelectorAll('.metric').forEach(function (metric) {
+        var label = metric.querySelector('.metric-label').textContent.trim();
+        var at = heads.indexOf(label);
+        if (at >= 0 && cells[at]) {
+          metric.querySelector('.metric-value').textContent = cells[at].textContent.trim();
+        }
+      });
+    });
+  }
+
+  select.addEventListener('change', function () { apply(this.value); });
+})();
+</script>
+{% endif %}
+{% endblock %}

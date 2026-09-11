@@ -9,9 +9,11 @@ import json
 import logging
 import sys
 
+from src.api import cardstats as cardstats_api
 from src.api.client import ApiError, ClashRoyaleClient
 from src.api.models import parse_battle
-from src.config import CARD_IMAGE_DIR, CARD_NAMES_PATH, CARD_WEB_DIR, LOG_DIR, get_config
+from src.config import (CARD_IMAGE_DIR, CARD_NAMES_PATH, CARD_STATS_MANUAL_PATH,
+                        CARD_WEB_DIR, LOG_DIR, get_config)
 from src.db import repository as repo
 
 
@@ -53,6 +55,69 @@ def update_cards(conn, client):
     conn.commit()
     logging.info("ゲーム最大レベル: %s", max_level)
     return unknown
+
+
+def load_stats_manual():
+    """自動取得できなかった性能値の補完ファイルを読み込む。"""
+    if not CARD_STATS_MANUAL_PATH.exists():
+        return {}
+    with CARD_STATS_MANUAL_PATH.open(encoding="utf-8") as f:
+        return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+
+
+def update_card_stats(conn):
+    """カードの性能値を Clash Royale Wiki から取得して保存する。
+
+    公式APIは性能値を返さないため外部の情報源を使う。取得できなかったカードは
+    名前を出すので、`src/data/card_stats_manual.json` に手で書き足す。
+    """
+    cards = conn.execute(
+        "SELECT card_id, name_en, name_ja FROM cards WHERE is_support = 0"
+        " ORDER BY name_en").fetchall()
+    if not cards:
+        logging.error("カードマスタが未取得です。--update-cards を先に実行してください。")
+        return []
+
+    names = [c["name_en"] for c in cards]
+    logging.info("性能値を取得します: %d枚（%d件ずつ問い合わせ）",
+                 len(names), cardstats_api.BATCH_SIZE)
+    pages = cardstats_api.fetch_pages(names)
+    manual = load_stats_manual()
+
+    saved, missing = 0, []
+    for card in cards:
+        name_en = card["name_en"]
+        wikitext, revid = pages.get(name_en, (None, None))
+        stats = cardstats_api.build_stats(wikitext, name_en, revid)
+
+        # 補完ファイルの内容を上書きで合成する
+        extra = manual.get(name_en)
+        if extra:
+            stats = stats or {"units": [], "attributes": [], "extras": {},
+                              "source": {"name": cardstats_api.SOURCE_NAME,
+                                         "license": cardstats_api.LICENSE,
+                                         "page": name_en,
+                                         "url": cardstats_api.PAGE_URL + name_en.replace(" ", "_"),
+                                         "base_level": cardstats_api.BASE_LEVEL}}
+            if extra.get("units"):
+                stats["units"] = extra["units"]
+            if extra.get("attributes"):
+                stats["attributes"] = extra["attributes"]
+
+        if stats is None:
+            missing.append(card["name_ja"] or name_en)
+            continue
+        repo.upsert_card_stats(conn, card["card_id"], stats)
+        saved += 1
+    conn.commit()
+
+    with_units = conn.execute(
+        "SELECT COUNT(*) AS c FROM card_stats"
+        " WHERE stats_json LIKE '%\"hp\"%' OR stats_json LIKE '%\"dmg\"%'").fetchone()["c"]
+    logging.info("性能値を保存しました: %d枚（うちレベル別の数値あり %d枚）", saved, with_units)
+    for name in missing:
+        logging.warning("性能値を取得できませんでした: %s", name)
+    return missing
 
 
 def download_images(conn, client, force=False):
@@ -236,6 +301,8 @@ def main(argv=None):
     parser.add_argument("--init", action="store_true",
                         help="DBを初期化し、カードマスタ・画像を取得して初回収集を行う")
     parser.add_argument("--update-cards", action="store_true", help="カードマスタを更新する")
+    parser.add_argument("--update-card-stats", action="store_true",
+                        help="カードの性能値をClash Royale Wikiから取得する")
     parser.add_argument("--reload-names", action="store_true", help="日本語名の対応表を反映する")
     parser.add_argument("--download-images", action="store_true", help="カード画像を取得する")
     parser.add_argument("--force-images", action="store_true", help="既存の画像も再取得する")
@@ -308,6 +375,7 @@ def main(argv=None):
 
         if args.init:
             update_cards(conn, client)
+            update_card_stats(conn)
             download_images(conn, client)
             optimize_images(conn)
             collect_battles(conn, client, config)
@@ -317,8 +385,13 @@ def main(argv=None):
 
         if args.update_cards:
             update_cards(conn, client)
+            update_card_stats(conn)
             download_images(conn, client, force=args.force_images)
             optimize_images(conn, force=args.force_images)
+            return 0
+
+        if args.update_card_stats:
+            update_card_stats(conn)
             return 0
 
         if args.reload_names:

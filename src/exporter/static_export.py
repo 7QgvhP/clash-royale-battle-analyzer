@@ -25,7 +25,9 @@ PERIODS = ["all", "7d", "30d", "90d"]
 MODES = [None, "PvP", "pathOfLegend"]
 
 # 絞り込みの組み合わせではないディレクトリ。古いページの掃除で消さないよう除外する。
-RESERVED_DIRS = {"cards", "matches"}
+# 掃除の対象外にするディレクトリ。cards はカード画像、matches は対戦詳細、
+# card はカードの性能値ページ。いずれも絞り込みの組み合わせではない。
+RESERVED_DIRS = {"cards", "matches", "card"}
 
 
 def get_secret(conn, rotate=False):
@@ -128,6 +130,35 @@ def export_match_details(conn, client, out_dir):
     return len(ids)
 
 
+def export_card_details(conn, client, out_dir):
+    """カードの性能値ページを書き出す。
+
+    性能値は絞り込みに依存しないため、組み合わせごとには作らず1枚1ファイルに
+    する。カードは増えても100枚台なので全件を対象にしてよい。
+    画像を置く cards/ と混ざらないよう card/ に分ける。
+    """
+    card_dir = out_dir / "card"
+    card_dir.mkdir(parents=True, exist_ok=True)
+
+    ids = [r["card_id"] for r in conn.execute(
+        "SELECT card_id FROM cards WHERE is_support = 0 ORDER BY card_id")]
+    for card_id in ids:
+        response = client.get(f"/card/{card_id}")
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"カード詳細の書き出しに失敗しました: {card_id} -> {response.status_code}")
+        (card_dir / f"{card_id}.html").write_bytes(response.data)
+
+    # カードマスタから消えたカードのページは残さない
+    expected = {f"{i}.html" for i in ids}
+    for old in card_dir.iterdir():
+        if old.is_file() and old.name not in expected:
+            old.unlink()
+
+    logging.info("カード詳細を書き出しました: %d件", len(ids))
+    return len(ids)
+
+
 def write_index(out_dir, default_combo):
     """入口となるページ。既定の組み合わせへ転送する。"""
     target = f"{default_combo}/summary.html"
@@ -187,6 +218,7 @@ def export(conn, rotate_secret=False, clean=False):
                     (combo_dir / filename).write_bytes(response.data)
                     written += 1
         written += export_match_details(conn, client, out_dir)
+        written += export_card_details(conn, client, out_dir)
     finally:
         webapp.STATIC_MODE = False
 

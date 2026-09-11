@@ -7,6 +7,7 @@ from functools import wraps
 from flask import Flask, abort, render_template, request, send_from_directory
 
 from src.analysis import cards as cards_analysis
+from src.analysis import cardstats as cardstats_analysis
 from src.analysis import decks as decks_analysis
 from src.analysis import detail as detail_analysis
 from src.analysis import levels as levels_analysis
@@ -247,6 +248,24 @@ def match_view(match_id):
         ctx = base_context(conn, filters)
         ctx.update({"active": "history", "detail": detail})
         return render_template("match.html", **ctx)
+    finally:
+        conn.close()
+
+
+@app.route("/card/<int:card_id>")
+def card_view(card_id):
+    """カード1枚の性能値。絞り込みに依存しないため @screen は使わない。"""
+    conn = get_conn()
+    try:
+        detail = cardstats_analysis.card_detail(conn, card_id)
+        if detail is None:
+            abort(404)
+
+        # 詳細ページ自体は絞り込みを持たないが、ヘッダとナビは共通のものを使う。
+        filters = Filters(player_tag=repo.default_player_tag(conn))
+        ctx = base_context(conn, filters)
+        ctx.update({"active": "cards", "detail": detail})
+        return render_template("card.html", **ctx)
     finally:
         conn.close()
 

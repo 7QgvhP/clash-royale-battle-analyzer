@@ -30,11 +30,11 @@
     <div class="versus">
       <div>
         <div class="card-meta">自分</div>
-        {{ m.deck_row(mt.my_cards) }}
+        {{ m.deck_row(mt.my_cards, linked=false) }}
       </div>
       <div>
         <div class="card-meta">{{ mt.opponent_name }}</div>
-        {{ m.deck_row(mt.opp_cards) }}
+        {{ m.deck_row(mt.opp_cards, linked=false) }}
       </div>
     </div>
   </a>

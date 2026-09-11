@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "Clash Royale Wiki から自動で取り出せなかった性能値を補うファイル。",
+    "英語カード名をキーにし、取得結果へ上書きで合成する。",
+    "値はレベル11基準。wiki側でレベル別の表に直接書かれていて、",
+    "#vardefine による変数化がされていないカードがここに入る。",
+    "",
+    "新カードの追加やwikiの書式変更で取りこぼしが出た場合は、",
+    "python -m src.collector.collect --update-card-stats の出力に",
+    "「性能値を取得できなかったカード」として名前が出るので、",
+    "そのカードのwikiページを見てここに追記する。",
+    "",
+    "出典: Clash Royale Wiki (CC BY-SA)"
+  ],
+
+  "Ronin": {
+    "units": [
+      {
+        "prefix": null,
+        "hp": 1779,
+        "dmg": 371,
+        "atk_speed": 1.4
+      }
+    ]
+  }
+}

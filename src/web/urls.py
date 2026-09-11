@@ -97,6 +97,18 @@ def match_url(match_id, static_mode):
     return f"../matches/{match_id}.html"
 
 
+def card_url(card_id, static_mode):
+    """カード詳細ページへのURLを返す。
+
+    性能値は絞り込みに依存しないため、組み合わせごとには作らず
+    <secret>/card/<id>.html に1つだけ置く。画像を入れる cards/ とは
+    別の名前にして衝突を避ける。
+    """
+    if not static_mode:
+        return url_for("card_view", card_id=card_id)
+    return f"../card/{card_id}.html"
+
+
 def asset_url(path, static_mode):
     """CSSや画像へのURLを返す。"""
     if not static_mode:
@@ -117,5 +129,8 @@ def helpers(filters, static_mode):
     def match(match_id):
         return match_url(match_id, static_mode)
 
+    def card(card_id):
+        return card_url(card_id, static_mode)
+
     return {"page_url": page_url, "asset_url": asset, "match_url": match,
-            "static_mode": static_mode}
+            "card_url": card, "static_mode": static_mode}

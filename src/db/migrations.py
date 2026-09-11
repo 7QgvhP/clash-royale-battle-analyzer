@@ -7,7 +7,7 @@
 import logging
 
 # 現在のスキーマ版。schema.sql を変更したら上げる。
-CURRENT_VERSION = 2
+CURRENT_VERSION = 3
 
 
 def get_version(conn):
@@ -24,6 +24,8 @@ def get_version(conn):
     # 版が未記録の場合は、実際の列の有無で判断する。テーブルの存在では
     # 判定しない。移行が途中で失敗すると一部のテーブルだけが作られ、
     # 未完了の状態を「移行済み」と誤認するため。
+    if _table_exists(conn, "card_stats"):
+        return 3
     return 2 if _has_column(conn, "decks", "player_tag") else 1
 
 
@@ -121,8 +123,29 @@ def migrate_1_to_2(conn):
     logging.info("マイグレーション完了: 対戦 %d件を保持しました", moved)
 
 
+def migrate_2_to_3(conn):
+    """カード性能値の保存先を追加する。
+
+    既存データには触れない。性能値そのものは
+    `python -m src.collector.collect --update-card-stats` で取得する。
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS card_stats (
+            card_id    INTEGER PRIMARY KEY,
+            stats_json TEXT NOT NULL,
+            source     TEXT,
+            source_url TEXT,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (card_id) REFERENCES cards (card_id)
+        )
+    """)
+    conn.commit()
+    logging.info("マイグレーション完了: card_stats を作成しました")
+
+
 MIGRATIONS = {
     2: migrate_1_to_2,
+    3: migrate_2_to_3,
 }
 
 

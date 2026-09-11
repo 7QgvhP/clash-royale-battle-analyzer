@@ -166,6 +166,42 @@ def all_cards(conn):
     return conn.execute("SELECT * FROM cards ORDER BY card_id").fetchall()
 
 
+def upsert_card_stats(conn, card_id, stats):
+    """カード1枚分の性能値を保存する。
+
+    項目の顔ぶれがカード種別ごとに違うためJSONのまま持つ。
+    取得日時は更新のたびに入れ替え、画面に「いつ時点の値か」を出せるようにする。
+    """
+    source = stats.get("source", {})
+    conn.execute(
+        "INSERT INTO card_stats (card_id, stats_json, source, source_url, updated_at)"
+        " VALUES (?, ?, ?, ?, datetime('now'))"
+        " ON CONFLICT(card_id) DO UPDATE SET"
+        "   stats_json = excluded.stats_json,"
+        "   source = excluded.source,"
+        "   source_url = excluded.source_url,"
+        "   updated_at = excluded.updated_at",
+        (card_id, json.dumps(stats, ensure_ascii=False),
+         source.get("name"), source.get("url")))
+
+
+def get_card_stats(conn, card_id):
+    """カード1枚分の性能値を返す。未取得なら None。"""
+    row = conn.execute(
+        "SELECT stats_json, source, source_url, updated_at"
+        " FROM card_stats WHERE card_id = ?", (card_id,)).fetchone()
+    if row is None:
+        return None
+    stats = json.loads(row["stats_json"])
+    stats["updated_at"] = row["updated_at"]
+    return stats
+
+
+def card_stats_count(conn):
+    """性能値を保持しているカードの枚数。"""
+    return conn.execute("SELECT COUNT(*) AS c FROM card_stats").fetchone()["c"]
+
+
 def set_icon_paths(conn, card_id, icon_path, evo_icon_path):
     conn.execute("UPDATE cards SET icon_path = ?, evo_icon_path = ? WHERE card_id = ?",
                  (icon_path, evo_icon_path, card_id))

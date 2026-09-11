@@ -65,8 +65,11 @@ def main():
     current = snapshot()
 
     if args.update or not BASELINE_PATH.exists():
+        # 改行はLFで固定する。既定のままだとWindowsでCRLFになり、
+        # 中身が同じでも差分が全行（約1万行）になってしまう。
         BASELINE_PATH.write_text(
-            json.dumps(current, ensure_ascii=False, sort_keys=True, indent=1), encoding="utf-8")
+            json.dumps(current, ensure_ascii=False, sort_keys=True, indent=1),
+            encoding="utf-8", newline="\n")
         print(f"基準値を保存しました: {len(current)}組")
         return 0
 
