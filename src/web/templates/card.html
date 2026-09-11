@@ -10,7 +10,11 @@
 {% set d = detail %}
 {% set c = d.card %}
 
-<a class="back-link" href="{{ page_url('cards') }}">← 苦手カードへ戻る</a>
+{# カードの性能はどの画面からでも開ける。詳細ページは絞り込みごとに複製せず
+   1枚1ファイルなので、戻り先を書き出し時には決められない。
+   そのため参照元から判断して差し替える。JavaScriptが動かない場合や
+   直接開かれた場合は、この既定の行き先がそのまま使われる。 #}
+<a class="back-link" id="back-link" href="{{ page_url('cards') }}">← 苦手カードへ戻る</a>
 
 <div class="card-hero">
   {% if c.icon_path %}
@@ -125,6 +129,53 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// 開く前に見ていた画面へ戻れるようにする。
+(function () {
+  var link = document.getElementById('back-link');
+  var ref = document.referrer;
+  if (!link || !ref) return;
+
+  var url;
+  try {
+    url = new URL(ref, location.href);
+  } catch (e) {
+    return;
+  }
+  // 外部サイトからの流入で、当サイト外へ戻してしまわないようにする
+  if (url.origin !== location.origin) return;
+
+  var segments = url.pathname.split('/').filter(Boolean);
+  var last = segments[segments.length - 1] || '';
+  var parent = segments[segments.length - 2] || '';
+
+  var name = null;
+  if (parent === 'matches' || parent === 'match') {
+    name = '対戦の詳細';
+  } else {
+    // 静的サイトは cards.html、サーバー稼働時は /cards。週次は summary-week。
+    var key = last.replace(/\.html$/, '').replace(/-week$/, '');
+    var names = {
+      '': 'サマリー', summary: 'サマリー', cards: '苦手カード', meta: '環境',
+      decks: '自デッキ', levels: 'レベル分析', history: '対戦履歴'
+    };
+    name = names[key] || null;
+  }
+  // 見覚えのない画面なら既定のままにしておく
+  if (!name) return;
+
+  link.href = ref;
+  link.textContent = '← ' + name + 'へ戻る';
+
+  // 履歴をたどれるなら戻るを使う。一覧の読んでいた位置が保たれる。
+  link.addEventListener('click', function (event) {
+    if (history.length > 1) {
+      event.preventDefault();
+      history.back();
+    }
+  });
+})();
+</script>
 {% if detail.units %}
 <script>
 // レベルを切り替えたら、上の数値カードと表の強調行を合わせる。

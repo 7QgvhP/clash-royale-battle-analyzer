@@ -70,7 +70,7 @@
                         ('meta', '環境'), ('decks', '自デッキ'),
                         ('levels', 'レベル分析'), ('history', '対戦履歴')] %}
     {% for key, label in nav_items %}
-      <a href="{{ page_url(key) }}" class="{% if active == key %}active{% endif %}">{{ label }}</a>
+      <a href="{{ page_url(key) }}" class="{% if nav_active == key %}active{% endif %}">{{ label }}</a>
     {% endfor %}
   </nav>
 

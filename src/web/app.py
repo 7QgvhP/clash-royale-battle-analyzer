@@ -120,6 +120,10 @@ def base_context(conn, filters):
         "player_tag": filters.player_tag or "",
         "trophies": player["trophies"] if player else None,
         "min_matches": config.min_matches,
+        # active はプレイヤー切替や絞り込みの遷移先を組み立てるために使う。
+        # nav_active はタブの強調にだけ使う。詳細ページはどのタブにも
+        # 属さないため None のままにし、誤ったタブを光らせない。
+        "nav_active": None,
     }
     ctx.update(urlmod.helpers(filters, STATIC_MODE))
     return ctx
@@ -144,6 +148,7 @@ def screen(route, name, template):
                 filters = Filters.from_request(request.args, repo.default_player_tag(conn))
                 ctx = base_context(conn, filters)
                 ctx["active"] = name
+                ctx["nav_active"] = name
                 ctx.update(view(conn, filters) or {})
                 return render_template(template, **ctx)
             finally:
@@ -246,7 +251,7 @@ def match_view(match_id):
         # 対戦した本人を選んだ状態の絞り込みを組み立てて渡す。
         filters = Filters(player_tag=detail["player_tag"])
         ctx = base_context(conn, filters)
-        ctx.update({"active": "history", "detail": detail})
+        ctx.update({"active": "history", "nav_active": "history", "detail": detail})
         return render_template("match.html", **ctx)
     finally:
         conn.close()
@@ -264,7 +269,7 @@ def card_view(card_id):
         # 詳細ページ自体は絞り込みを持たないが、ヘッダとナビは共通のものを使う。
         filters = Filters(player_tag=repo.default_player_tag(conn))
         ctx = base_context(conn, filters)
-        ctx.update({"active": "cards", "detail": detail})
+        ctx.update({"active": "cards", "detail": detail})  # nav_active は None のまま
         return render_template("card.html", **ctx)
     finally:
         conn.close()
