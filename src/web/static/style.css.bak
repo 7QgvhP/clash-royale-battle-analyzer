@@ -1,0 +1,176 @@
+/* clash-royale-battle-analyzer ダッシュボードのスタイル
+   白基調のフラットなUI。色は勝敗の方向を示す用途に限定する。 */
+
+:root {
+  --bg: #ffffff;
+  --surface: #fafaf9;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+  --text: #1c1917;
+  --text-sub: #78716c;
+  --text-mute: #a8a29e;
+  --neg: #b91c1c;
+  --neg-bg: #fef2f2;
+  --pos: #15803d;
+  --pos-bg: #f0fdf4;
+  --accent: #1d4ed8;
+  --radius: 8px;
+  --radius-card: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Yu Gothic UI", "Hiragino Sans", sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 64px; }
+
+/* --- ヘッダ --- */
+.header {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.header-inner {
+  max-width: 1080px; margin: 0 auto; padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap;
+}
+.player { display: flex; align-items: baseline; gap: 10px; }
+.player-name { font-size: 16px; font-weight: 500; }
+.player-switch { display: inline-flex; margin: 0; }
+.player-switch select {
+  font: inherit; font-size: 15px; font-weight: 500; padding: 2px 6px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: #fff; color: var(--text); cursor: pointer;
+}
+.player-tag { font-size: 12px; color: var(--text-mute); font-family: ui-monospace, monospace; }
+.player-trophies { font-size: 14px; color: var(--text-sub); }
+
+.status { font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-sub); }
+.status.error { border-color: #fca5a5; background: var(--neg-bg); color: var(--neg); }
+.status.warn { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+
+/* --- ナビ --- */
+.nav { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+.nav a {
+  padding: 6px 14px; border-radius: var(--radius); font-size: 13px;
+  color: var(--text-sub);
+}
+.nav a:hover { background: var(--surface); }
+.nav a.active { background: var(--text); color: #fff; }
+
+/* --- フィルタ --- */
+.filters {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+}
+.filters label { font-size: 12px; color: var(--text-sub); }
+.filters select {
+  font: inherit; font-size: 13px; padding: 5px 10px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: #fff; color: var(--text);
+}
+.filters button {
+  font: inherit; font-size: 13px; padding: 5px 14px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: #fff; cursor: pointer;
+}
+.filters button:hover { background: var(--surface); }
+
+/* --- 指標カード --- */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.metric { background: var(--surface); border-radius: var(--radius-card); padding: 14px 16px; }
+.metric-label { font-size: 12px; color: var(--text-sub); }
+.metric-value { font-size: 26px; font-weight: 500; line-height: 1.3; }
+.metric-sub { font-size: 12px; color: var(--text-mute); }
+
+/* --- 表 --- */
+h2 { font-size: 16px; font-weight: 500; margin: 28px 0 10px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+th { font-size: 11px; color: var(--text-mute); font-weight: 400; white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+tr.unreliable td { color: var(--text-mute); }
+
+.card-cell { display: flex; align-items: center; gap: 10px; }
+.card-img { width: 38px; height: 46px; object-fit: contain; flex-shrink: 0; }
+.card-img.placeholder { background: var(--surface); border-radius: 4px; }
+.card-name { font-size: 14px; }
+.card-meta { font-size: 11px; color: var(--text-mute); }
+
+.rate { font-size: 15px; font-weight: 500; }
+.ci { font-size: 11px; color: var(--text-mute); }
+.delta { font-weight: 500; }
+.delta.neg { color: var(--neg); }
+.delta.pos { color: var(--pos); }
+.badge {
+  font-size: 10px; padding: 1px 7px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-sub);
+  margin-left: 6px; white-space: nowrap;
+}
+
+/* --- デッキ表示 --- */
+.deck { display: flex; gap: 3px; flex-wrap: wrap; }
+.deck img { width: 32px; height: 39px; object-fit: contain; }
+.deck-lg img { width: 44px; height: 53px; }
+
+/* --- 履歴 --- */
+.match-row { display: grid; grid-template-columns: 90px 60px 1fr; gap: 12px; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--border); }
+.result-win { color: var(--pos); font-weight: 500; }
+.result-loss { color: var(--neg); font-weight: 500; }
+.result-draw { color: var(--text-sub); font-weight: 500; }
+.versus { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+
+/* --- 注記・グラフ --- */
+.note {
+  font-size: 12px; color: var(--text-sub); background: var(--surface);
+  border-radius: var(--radius); padding: 10px 14px; margin-top: 16px; line-height: 1.7;
+}
+.chart-box { position: relative; height: 240px; margin-bottom: 24px; }
+.empty { color: var(--text-mute); padding: 32px 0; text-align: center; }
+
+/* --- スマートフォン向けの調整 ---
+   6列の表を375px幅に収めるため、余白と文字サイズを詰め、
+   補助的な情報（英語名・レアリティ）を隠す。 */
+@media (max-width: 640px) {
+  body { font-size: 13px; }
+  .wrap { padding: 0 12px 48px; }
+  .header-inner { padding: 12px; }
+
+  th, td { padding: 6px 4px; }
+  th { font-size: 10px; }
+  .card-meta { display: none; }
+  .card-img { width: 30px; height: 36px; }
+  .card-name { font-size: 12px; }
+  .rate { font-size: 13px; }
+  .ci { font-size: 10px; }
+  .delta { font-size: 12px; }
+  .badge { font-size: 9px; padding: 0 5px; margin-left: 3px; }
+
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .metric { padding: 10px 12px; }
+  .metric-value { font-size: 20px; }
+
+  .filters { gap: 6px; padding: 10px 0; }
+  .filters select { max-width: 46%; font-size: 12px; }
+  .nav a { padding: 5px 10px; font-size: 12px; }
+
+  .deck img { width: 26px; height: 32px; }
+  .deck-lg img { width: 32px; height: 39px; }
+  .match-row { grid-template-columns: 74px 52px 1fr !important; gap: 8px; }
+  .versus { gap: 8px; }
+  .chart-box { height: 200px; }
+}
+
+/* 参考値（最低試合数未満）の行を隠す切替 */
+body.hide-unreliable tr.unreliable { display: none; }

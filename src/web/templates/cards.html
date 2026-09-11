@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}苦手カード | クラロワ対戦分析{% endblock %}
+
+{% block extra_filters %}
+  {# ページを分けずブラウザ側で切り替える。組み合わせを増やさずに済む #}
+  <label><input type="checkbox" id="hide-unreliable"> {{ min_matches }}戦未満を隠す</label>
+{% endblock %}
+
+{% block content %}
+
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-label">対戦数</div>
+    <div class="metric-value">{{ total_matches }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">全体勝率</div>
+    <div class="metric-value">{{ overall.rate | pct }}</div>
+    {% if overall.margin is not none %}
+      <div class="metric-sub">±{{ overall.margin | pct }}（n={{ overall.total }}）</div>
+    {% endif %}
+  </div>
+  <div class="metric">
+    <div class="metric-label">勝-敗</div>
+    <div class="metric-value">{{ overall.wins }}-{{ overall.losses }}</div>
+  </div>
+</div>
+
+<h2>相手カード別の勝率（デルタ昇順＝苦手な順）</h2>
+
+{% if rows %}
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th colspan="2">カード</th>
+      <th class="num">対戦</th>
+      <th class="num">勝率</th>
+      <th class="num">デルタ</th>
+      <th class="num col-appear">出現率</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr class="{% if not row.reliable %}unreliable{% endif %}">
+      <td style="width:48px">{{ m.card_img(row) }}</td>
+      <td>
+        <span class="card-name">{{ row.name }}</span>
+        {% if not row.reliable %}<span class="badge">参考値</span>{% endif %}
+        {% if row.evo_count %}<span class="badge evo">進化 {{ row.evo_count }}回</span>{% endif %}
+        <div class="card-meta">{{ row.name_en }}</div>
+      </td>
+      <td class="num">{{ row.total }}</td>
+      <td class="num">{{ m.rate_cell(row) }}</td>
+      <td class="num">{{ m.delta_cell(row) }}</td>
+      <td class="num col-appear">{{ row.appearance_rate | pct(0) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+  <div class="empty">該当する対戦がありません。</div>
+{% endif %}
+
+{% if supports %}
+<h2>相手のタワートループ別</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th colspan="2">タワートループ</th><th class="num">対戦</th><th class="num">勝率</th><th class="num">デルタ</th></tr>
+  </thead>
+  <tbody>
+    {% for row in supports %}
+    <tr class="{% if not row.reliable %}unreliable{% endif %}">
+      <td style="width:48px">{{ m.card_img(row) }}</td>
+      <td>{{ row.name }}{% if not row.reliable %}<span class="badge">参考値</span>{% endif %}</td>
+      <td class="num">{{ row.total }}</td>
+      <td class="num">{{ m.rate_cell(row) }}</td>
+      <td class="num">{{ m.delta_cell(row) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<div class="note">
+  カード単位の勝率は「そのカードのせいで負けた」ことを意味しない。強いデッキに採用されがちなカードは、
+  それ自体の強さと無関係に勝率が低く見える（交絡）。傾向を掴むための指標として扱うこと。<br>
+  {{ min_matches }}戦未満のカードは参考値として薄く表示し、並び順でも後ろに置いている。
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 参考値の行を隠す切替。表示上の操作なのでサーバーは不要。
+(function () {
+  var box = document.getElementById('hide-unreliable');
+  if (!box) return;
+  var apply = function () {
+    document.body.classList.toggle('hide-unreliable', box.checked);
+    try { localStorage.setItem('hideUnreliable', box.checked ? '1' : '0'); } catch (e) {}
+  };
+  try { box.checked = localStorage.getItem('hideUnreliable') === '1'; } catch (e) {}
+  apply();
+  box.addEventListener('change', apply);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}対戦履歴 | クラロワ対戦分析{% endblock %}
+
+{% block content %}
+
+<h2>対戦履歴（{{ total }}件）</h2>
+
+{% if matches %}
+  {% for mt in matches %}
+  {# 行全体をリンクにして、詳細を開きやすくする #}
+  <a class="match-row match-link" href="{{ match_url(mt.id) }}"
+     style="grid-template-columns: 110px 70px 1fr">
+    <div>
+      <div class="result-{{ mt.result }}">
+        {% if mt.result == 'win' %}勝ち{% elif mt.result == 'loss' %}負け{% else %}引分{% endif %}
+      </div>
+      <div class="card-meta">{{ mt.battle_time | jst }}</div>
+      <div class="card-meta">{{ mt.game_mode_name }}</div>
+    </div>
+    <div class="num">
+      <div class="rate">{{ mt.crowns }}-{{ mt.opponent_crowns }}</div>
+      {% if mt.trophy_change is not none %}
+        <div class="card-meta">{{ "%+d" | format(mt.trophy_change) }}</div>
+      {% endif %}
+      {% if mt.level_diff is not none %}
+        <div class="card-meta">Lv{{ "%+.1f" | format(mt.level_diff) }}</div>
+      {% endif %}
+    </div>
+    <div class="versus">
+      <div>
+        <div class="card-meta">自分</div>
+        {{ m.deck_row(mt.my_cards) }}
+      </div>
+      <div>
+        <div class="card-meta">{{ mt.opponent_name }}</div>
+        {{ m.deck_row(mt.opp_cards) }}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+
+  {% if static_mode %}
+    {% if total > matches | length %}
+      <div class="note">直近{{ matches | length }}件を表示している（全{{ total }}件）。
+        すべての履歴は、収集を行っているPC上のダッシュボードで確認できる。</div>
+    {% endif %}
+  {% else %}
+  <div style="margin-top:20px; display:flex; gap:10px; align-items:center">
+    {% if page > 1 %}
+      <a href="{{ url_for('history_view', page=page-1, **query) }}">← 前へ</a>
+    {% endif %}
+    <span class="card-meta">{{ page }} / {{ pages }}</span>
+    {% if page < pages %}
+      <a href="{{ url_for('history_view', page=page+1, **query) }}">次へ →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+{% else %}
+  <div class="empty">該当する対戦がありません。</div>
+{% endif %}
+
+{% endblock %}

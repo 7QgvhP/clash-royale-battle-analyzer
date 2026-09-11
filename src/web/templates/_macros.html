@@ -1,0 +1,41 @@
+{# カード画像。ローカルに保存された画像が無い場合は枠だけを表示する。 #}
+{% macro card_img(card, cls='card-img') %}
+  {% if card.icon_path %}
+    <img class="{{ cls }}" src="{{ asset_url('cards/' ~ card.icon_path) }}"
+         alt="{{ card.name }}" title="{{ card.name }}">
+  {% else %}
+    <span class="{{ cls }} placeholder" title="{{ card.name }}"></span>
+  {% endif %}
+{% endmacro %}
+
+{# デッキ8枚を横に並べる。 #}
+{% macro deck_row(cards, cls='deck') %}
+  <span class="{{ cls }}">
+    {% for c in cards %}
+      {% if c.icon_path %}
+        <img src="{{ asset_url('cards/' ~ c.icon_path) }}" alt="{{ c.name }}" title="{{ c.name }}">
+      {% endif %}
+    {% endfor %}
+  </span>
+{% endmacro %}
+
+{# 勝率と信頼区間。試合数が不足しているものは参考値として区別する。 #}
+{% macro rate_cell(row) %}
+  <span class="rate">{{ row.rate | pct }}</span>
+  {% if row.margin is not none %}
+    <div class="ci">±{{ row.margin | pct }}, n={{ row.total }}</div>
+    {# 数値の下に細いバーを添えると、一覧の中での比較が速くなる #}
+    <div class="rate-bar"><span style="--v: {{ (row.rate * 100) | round(0, 'floor') }}%"></span></div>
+  {% endif %}
+{% endmacro %}
+
+{# 勝率デルタ。負なら赤、正なら緑。 #}
+{% macro delta_cell(row) %}
+  {% if row.delta is none %}
+    <span class="delta">--</span>
+  {% else %}
+    <span class="delta {% if row.delta < 0 %}neg{% elif row.delta > 0 %}pos{% endif %}">
+      {{ row.delta | signed }}
+    </span>
+  {% endif %}
+{% endmacro %}

@@ -1,0 +1,21 @@
+{
+  "name": "クラロワ対戦分析",
+  "short_name": "クラロワ分析",
+  "description": "対戦履歴から勝率と苦手カードを分析する",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#12224f",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

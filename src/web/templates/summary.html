@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}サマリー | クラロワ対戦分析{% endblock %}
+
+{% block content %}
+
+{# トロフィーを主役に据え、成績（対戦数・勝率・勝敗）は関連が深いので1枚にまとめる #}
+<div class="summary-top">
+  <div class="metric metric-hero">
+    <div class="metric-label">トロフィー</div>
+    <div class="hero-value">{{ trophies or "--" }}</div>
+  </div>
+
+  <div class="metric metric-group">
+    <div class="group-item">
+      <div class="metric-label">対戦数</div>
+      <div class="metric-value">{{ overall.matches }}</div>
+    </div>
+    <div class="group-item">
+      <div class="metric-label">勝率</div>
+      <div class="metric-value">{{ overall.rate | pct }}</div>
+      {% if overall.margin is not none %}
+        <div class="metric-sub">±{{ overall.margin | pct }}（n={{ overall.total }}）</div>
+      {% endif %}
+    </div>
+    <div class="group-item">
+      {# 引き分けは延長戦のタイブレーカーでほぼ決着がつくため、
+         実際に発生したときだけ「分」を出す。常に 0 を並べても情報にならず、
+         逆に隠したままだと対戦数と勝＋敗が食い違って見えるため。 #}
+      <div class="metric-label">勝-敗{% if overall.draws %}-分{% endif %}</div>
+      <div class="metric-value">
+        {{ overall.wins }}-{{ overall.losses }}{% if overall.draws %}-{{ overall.draws }}{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not overall.reliable and overall.total %}
+  <div class="note">
+    対戦数が{{ min_matches }}戦に満たないため、勝率はまだ参考値です。データが貯まるほど精度が上がります。
+  </div>
+{% endif %}
+
+<h2>勝率の推移
+  <span>
+    <a class="seg-link {% if unit=='day' %}on{% endif %}" href="{{ page_url('summary') }}">日次</a>
+    <a class="seg-link {% if unit=='week' %}on{% endif %}" href="{{ page_url('summary', variant='week') }}">週次</a>
+  </span>
+</h2>
+{% if win_trend %}
+  <div class="chart-box"><canvas id="winChart"></canvas></div>
+{% else %}
+  <div class="empty">データがありません。</div>
+{% endif %}
+
+<h2>トロフィーの推移</h2>
+{% if trophy_trend %}
+  <div class="chart-box"><canvas id="trophyChart"></canvas></div>
+{% else %}
+  <div class="empty">トロフィー情報を含む対戦がありません。</div>
+{% endif %}
+
+<h2>直近の対戦</h2>
+{% if recent %}
+  {% for mt in recent %}
+  <div class="match-row">
+    <div>
+      <div class="result-{{ mt.result }}">
+        {% if mt.result == 'win' %}勝ち{% elif mt.result == 'loss' %}負け{% else %}引分{% endif %}
+      </div>
+      <div class="card-meta">{{ mt.battle_time | jst }}</div>
+    </div>
+    <div class="num">
+      <div>{{ mt.crowns }}-{{ mt.opponent_crowns }}</div>
+      {% if mt.trophy_change is not none %}
+        <div class="card-meta">{{ "%+d" | format(mt.trophy_change) }}</div>
+      {% endif %}
+    </div>
+    <div>{{ m.deck_row(mt.opp_cards) }}</div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">対戦がありません。</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// グラフの色はCSSの変数から読む。テーマを切り替えたときに追従させるため。
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+const CHART_BASE = {
+  responsive: true, maintainAspectRatio: false,
+  // 描画アニメーションは無効にする。数値を確認する用途では
+  // 即座に出たほうがよく、スマートフォンでの体感も軽くなる。
+  animation: false,
+  plugins: { legend: { display: false } },
+  elements: { point: { radius: 0, hitRadius: 12, hoverRadius: 4 } },
+  interaction: { intersect: false, mode: 'index' }
+};
+function axis(extra) {
+  return Object.assign({
+    grid: { color: cssVar('--border'), drawTicks: false },
+    border: { display: false },
+    ticks: { color: cssVar('--text-mute'), font: { size: 11 },
+             maxRotation: 0, autoSkipPadding: 16 }
+  }, extra || {});
+}
+const CHARTS = [];
+document.addEventListener('themechange', function () {
+  CHARTS.forEach(function (c) {
+    var color = cssVar(c.$colorVar);
+    c.data.datasets[0].borderColor = color;
+    c.data.datasets[0].backgroundColor = color;
+    c.options.scales = c.$scales();
+    c.update('none');
+  });
+});
+
+{% if win_trend %}
+const winScales = () => ({
+  x: axis(),
+  y: axis({ min: 0, max: 100,
+            ticks: { color: cssVar('--text-mute'), font: { size: 11 },
+                     callback: v => v + '%' } })
+});
+const winChart = new Chart(document.getElementById('winChart'), {
+  type: 'line',
+  data: {
+    labels: {{ win_trend | map(attribute='bucket') | list | tojson }},
+    datasets: [{
+      data: {{ win_trend | map(attribute='rate') | list | tojson }}
+        .map(v => v === null ? null : Math.round(v * 1000) / 10),
+      borderColor: cssVar('--accent'), backgroundColor: cssVar('--accent'),
+      borderWidth: 2, tension: 0.3, spanGaps: true
+    }]
+  },
+  options: Object.assign({}, CHART_BASE, {
+    scales: winScales(),
+    plugins: { legend: { display: false },
+               tooltip: { callbacks: { label: c => c.parsed.y + '%' } } }
+  })
+});
+winChart.$colorVar = '--accent';
+winChart.$scales = winScales;
+CHARTS.push(winChart);
+{% endif %}
+
+{% if trophy_trend %}
+const trophyScales = () => ({ x: { display: false }, y: axis() });
+const trophyChart = new Chart(document.getElementById('trophyChart'), {
+  type: 'line',
+  data: {
+    labels: {{ trophy_trend | map(attribute='battle_time') | list | tojson }},
+    datasets: [{
+      data: {{ trophy_trend | map(attribute='trophies') | list | tojson }},
+      borderColor: cssVar('--accent'), backgroundColor: cssVar('--accent'),
+      borderWidth: 2, tension: 0.3
+    }]
+  },
+  options: Object.assign({}, CHART_BASE, {
+    scales: trophyScales(),
+    plugins: {
+      legend: { display: false },
+      // 日時はAPIの生の書式で読みづらいため出さない。
+      // 単位も見出しから自明なので数値だけを示す。
+      tooltip: { callbacks: { title: () => '', label: c => String(c.parsed.y) } }
+    }
+  })
+});
+trophyChart.$colorVar = '--accent';
+trophyChart.$scales = trophyScales;
+CHARTS.push(trophyChart);
+{% endif %}
+</script>
+{% endblock %}

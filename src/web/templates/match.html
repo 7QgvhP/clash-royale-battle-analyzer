@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}対戦の詳細 | クラロワ対戦分析{% endblock %}
+
+{# 詳細は絞り込みを持たないため、共通のフィルタ行は出さない #}
+{% block filters %}{% endblock %}
+
+{% block content %}
+
+{% set d = detail %}
+
+<a class="back-link" href="{{ page_url('history') }}">← 対戦履歴へ戻る</a>
+
+<div class="match-hero">
+  <div class="match-hero-main">
+    <span class="result-{{ d.result }}">
+      {% if d.result == 'win' %}勝ち{% elif d.result == 'loss' %}負け{% else %}引分{% endif %}
+    </span>
+    <span class="match-score">{{ d.me.crowns }} - {{ d.opponent.crowns }}</span>
+  </div>
+  <div class="match-hero-meta">
+    {{ d.battle_time | jst }}
+    ・{{ d.game_mode_name }}
+    {% if d.arena_name %}・{{ d.arena_name }}{% endif %}
+    {% if not d.is_countable %}<span class="badge">集計対象外</span>{% endif %}
+  </div>
+</div>
+
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-label">トロフィー変動</div>
+    <div class="metric-value">
+      {% if d.trophy_change is not none %}{{ "%+d" | format(d.trophy_change) }}{% else %}--{% endif %}
+    </div>
+    {% if d.me.starting_trophies %}
+      <div class="metric-sub">{{ d.me.starting_trophies }} から</div>
+    {% endif %}
+  </div>
+  <div class="metric">
+    <div class="metric-label">平均レベル差</div>
+    <div class="metric-value">
+      {% if d.level_diff is not none %}{{ "%+.2f" | format(d.level_diff) }}{% else %}--{% endif %}
+    </div>
+    <div class="metric-sub">自分 {{ d.me.avg_level or "--" }} / 相手 {{ d.opponent.avg_level or "--" }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">エリクサー漏れ</div>
+    <div class="metric-value">{{ d.me.elixir_leaked if d.me.elixir_leaked is not none else "--" }}</div>
+    <div class="metric-sub">相手 {{ d.opponent.elixir_leaked if d.opponent.elixir_leaked is not none else "--" }}</div>
+  </div>
+</div>
+
+<h2>タワーの残りHP</h2>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>プレイヤー</th>
+        <th class="num">キングタワー</th>
+        <th class="num">プリンセスタワー</th>
+        <th class="num">クラウン</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for side in [d.me, d.opponent] %}
+      <tr>
+        <td><span class="card-name">{{ side.name }}</span></td>
+        <td class="num">
+          {% if side.king_hp %}
+            <span class="rate">{{ side.king_hp }}</span>
+          {% else %}
+            <span class="tower-lost">破壊</span>
+          {% endif %}
+        </td>
+        <td class="num">
+          {% for hp in side.princess_hp %}
+            <span class="rate">{{ hp }}</span>{% if not loop.last %}<span class="tower-sep">/</span>{% endif %}
+          {% endfor %}
+          {% for _ in range(side.princess_lost) %}
+            {% if side.princess_hp or not loop.first %}<span class="tower-sep">/</span>{% endif %}
+            <span class="tower-lost">破壊</span>
+          {% endfor %}
+        </td>
+        <td class="num"><span class="rate">{{ side.crowns }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="note">
+  残りHPは対戦終了時点の値。キングタワーのHPが少ないほど、あと一歩まで
+  追い込まれていた（あるいは追い込んでいた）ことを意味する。
+</div>
+
+{% for side in [d.me, d.opponent] %}
+<h2>{{ side.name }} のデッキ
+  <span class="card-meta">平均 Lv{{ side.avg_level or "--" }}
+    {% if side.min_level %}（{{ side.min_level }}〜{{ side.max_level }}）{% endif %}</span>
+</h2>
+<div class="card-grid">
+  {% for c in side.cards %}
+  <div class="card-cell">
+    {{ m.card_img(c, 'card-img-lg') }}
+    <div class="card-cell-name">{{ c.name }}</div>
+    <div class="card-cell-level">
+      Lv{{ c.level if c.level is not none else "?" }}
+      {% if c.evolved %}<span class="badge">進化</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if side.supports %}
+<div class="support-row">
+  <span class="card-meta">タワートループ</span>
+  {% for c in side.supports %}
+    <span class="support-item">{{ m.card_img(c, 'card-img') }}
+      <span>{{ c.name }} Lv{{ c.level if c.level is not none else "?" }}</span></span>
+  {% endfor %}
+</div>
+{% endif %}
+{% endfor %}
+
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}環境 | クラロワ対戦分析{% endblock %}
+
+{% block content %}
+
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-label">対戦数</div>
+    <div class="metric-value">{{ total_matches }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">全体勝率</div>
+    <div class="metric-value">{{ overall.rate | pct }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">遭遇したカード種類</div>
+    <div class="metric-value">{{ rows | length }}</div>
+  </div>
+</div>
+
+<h2>相手デッキに現れたカード（出現率順）</h2>
+
+{% if rows %}
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th colspan="2">カード</th>
+      <th class="num">出現率</th>
+      <th class="num">対戦</th>
+      <th class="num">勝率</th>
+      <th class="num">デルタ</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr class="{% if not row.reliable %}unreliable{% endif %}">
+      <td style="width:48px">{{ m.card_img(row) }}</td>
+      <td>
+        <span class="card-name">{{ row.name }}</span>
+        <div class="card-meta">{{ row.rarity }}{% if row.elixir_cost %} ／ コスト{{ row.elixir_cost }}{% endif %}</div>
+      </td>
+      <td class="num"><span class="rate">{{ row.appearance_rate | pct(0) }}</span></td>
+      <td class="num">{{ row.total }}</td>
+      <td class="num">{{ m.rate_cell(row) }}</td>
+      <td class="num">{{ m.delta_cell(row) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+  <div class="empty">該当する対戦がありません。</div>
+{% endif %}
+
+<div class="note">
+  出現率は、絞り込み後の全対戦のうち、そのカードが相手デッキに含まれていた割合。
+  いま何が流行しているかを把握するための画面。
+</div>
+
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}レベル分析 | クラロワ対戦分析{% endblock %}
+
+{% block content %}
+
+{% if summary %}
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-label">自分の平均レベル</div>
+    <div class="metric-value">{{ summary.my_avg }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">相手の平均レベル</div>
+    <div class="metric-value">{{ summary.opp_avg }}</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">平均レベル差</div>
+    <div class="metric-value">{{ "%+.2f" | format(summary.diff_avg) }}</div>
+    <div class="metric-sub">不利 {{ summary.behind }}戦 ／ 有利 {{ summary.ahead }}戦</div>
+  </div>
+  {% if correlation %}
+  <div class="metric">
+    <div class="metric-label">相関係数</div>
+    <div class="metric-value">{{ "%+.2f" | format(correlation.r) }}</div>
+    <div class="metric-sub">{{ correlation.strength }}相関（n={{ correlation.n }}）</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if fit %}
+<h2>推定モデル
+  <span class="card-meta">ロジスティック回帰・n={{ fit.n }}</span>
+</h2>
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-label">レベル差0での勝率</div>
+    <div class="metric-value">{{ fit.rate_at_zero | pct }}</div>
+    <div class="metric-sub">互角の装備で戦ったときの実力</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">五分になるレベル差</div>
+    <div class="metric-value">{{ "%+.2f" | format(fit.even_diff) }}</div>
+    <div class="metric-sub">この不利までは勝率50%を保てる</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">1レベルあたりの効き</div>
+    <div class="metric-value">{{ "%+.1f" | format(fit.slope_per_level * 100) }}<span
+      style="font-size:14px">pt</span></div>
+    <div class="metric-sub">レベル差0付近での変化量</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">説明力</div>
+    <div class="metric-value">{{ (fit.pseudo_r2 * 100) | round(1) }}<span
+      style="font-size:14px">%</span></div>
+    <div class="metric-sub">
+      {% if fit.significant %}効果は有意（z={{ "%.2f" | format(fit.z) }}）
+      {% else %}有意とは言えない（z={{ "%.2f" | format(fit.z) }}）{% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<h2>レベル差ごとの勝率
+  <span class="card-meta">実測は{{ bucket_step }}刻み・破線は全体勝率 {{ overall.rate | pct }}</span>
+</h2>
+
+{% if buckets %}
+<div class="chart-box"><canvas id="levelChart"></canvas></div>
+
+{% if fit %}
+<div class="formula">
+  P(勝ち) = 1 / (1 + exp(−({{ "%+.3f" | format(fit.a) }}
+  {{ "%+.3f" | format(fit.b) }} × レベル差)))
+</div>
+{% endif %}
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>レベル差</th><th class="num">対戦</th><th class="num">勝率</th><th class="num">信頼区間</th></tr>
+  </thead>
+  <tbody>
+    {% for b in buckets %}
+    <tr class="{% if not b.reliable %}unreliable{% endif %}">
+      <td>{{ b.label }}{% if not b.reliable %}<span class="badge">参考値</span>{% endif %}</td>
+      <td class="num">{{ b.total }}</td>
+      <td class="num"><span class="rate">{{ b.rate | pct }}</span></td>
+      <td class="num ci">{% if b.margin is not none %}±{{ b.margin | pct }}{% else %}--{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  横軸は自分と相手の平均レベルの差。右へ行くほど自分のレベルが高い対戦を表す。<br>
+  {% if fit %}
+  <strong style="font-weight:600">曲線は実データから推定した勝率</strong>で、
+  周囲の薄い帯は95%信頼区間。帯が広い部分はその付近の対戦が少なく、
+  推定が定まっていないことを意味する。点は実測値で、大きさがその区分の対戦数を表す。<br>
+  <strong style="font-weight:600">説明力は {{ (fit.pseudo_r2 * 100) | round(1) }}%</strong>。
+  レベル差の効果自体は
+  {% if fit.significant %}統計的に有意だが{% else %}まだ有意とは言えず{% endif %}、
+  勝敗の大半はレベル以外の要因（相性・立ち回り・運）で決まっている。<br>
+  曲線はS字なので、勝率が高い領域ではレベルを上げてもほとんど伸びない。
+  「1レベルあたりの効き」はレベル差0付近に限った値である。<br>
+  曲線は実データのある範囲（{{ "%+.2f" | format(fit.x_min) }}〜{{ "%+.2f" | format(fit.x_max) }}）
+  だけを描いている。範囲外は根拠がないため外挿しない。<br>
+  なお、レベルを上げた時期と上達した時期は重なりやすい。この曲線の傾きには
+  上達の効果も混ざっており、レベルだけの効果とは言い切れない。
+  {% else %}
+  対戦数が少ないため、まだモデルを当てはめていない。データが貯まると推定曲線が表示される。
+  {% endif %}
+</div>
+{% else %}
+  <div class="empty">レベル情報を含む対戦がありません。</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if buckets %}
+<script>
+// 色はCSS変数から読み、テーマ切替に追従させる。
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// 実測は「区分の代表値」を横軸の実数として置く。区分が飛んでいても
+// 間隔が正しく空くよう、カテゴリ軸ではなく数値軸を使う。
+const POINTS = {{ buckets | map(attribute='key') | list | tojson }}
+  .map((x, i) => ({ x: x, y: {{ buckets | map(attribute='rate') | list | tojson }}[i] }))
+  .filter(p => p.y !== null)
+  .map(p => ({ x: p.x, y: Math.round(p.y * 1000) / 10 }));
+const COUNTS = {{ buckets | map(attribute='total') | list | tojson }};
+const MAXCOUNT = Math.max(1, ...COUNTS);
+const OVERALL = {{ (overall.rate * 100) | round(1) if overall.rate is not none else 'null' }};
+{% if fit %}
+const CURVE = {{ fit.curve | tojson }};
+{% else %}
+const CURVE = null;
+{% endif %}
+
+function scales() {
+  const grid = cssVar('--border');
+  const tick = cssVar('--text-mute');
+  return {
+    x: { type: 'linear',
+         grid: { color: grid, drawTicks: false }, border: { display: false },
+         ticks: { color: tick, font: { size: 11 },
+                  callback: v => (v > 0 ? '+' : '') + v } },
+    y: { min: 0, max: 100, grid: { color: grid, drawTicks: false },
+         border: { display: false },
+         ticks: { color: tick, font: { size: 11 }, callback: v => v + '%' } }
+  };
+}
+
+function datasets() {
+  const list = [];
+  if (CURVE) {
+    // 信頼区間の帯。下限を先に置き、上限で下限まで塗りつぶす。
+    list.push({
+      label: '信頼区間下限',
+      data: CURVE.map(p => ({ x: p.x, y: Math.round(p.low * 1000) / 10 })),
+      borderColor: 'transparent', pointRadius: 0, fill: false, order: 5
+    });
+    list.push({
+      label: '95%信頼区間',
+      data: CURVE.map(p => ({ x: p.x, y: Math.round(p.high * 1000) / 10 })),
+      borderColor: 'transparent', pointRadius: 0,
+      backgroundColor: cssVar('--accent-soft'), fill: '-1', order: 4
+    });
+  }
+  if (OVERALL !== null) {
+    const xs = CURVE ? [CURVE[0].x, CURVE[CURVE.length - 1].x]
+                     : [POINTS[0].x, POINTS[POINTS.length - 1].x];
+    list.push({
+      label: '全体勝率', data: xs.map(x => ({ x: x, y: OVERALL })),
+      borderColor: cssVar('--text-mute'), borderWidth: 1.5, borderDash: [5, 4],
+      pointRadius: 0, fill: false, order: 3
+    });
+  }
+  if (CURVE) {
+    list.push({
+      label: '推定勝率',
+      data: CURVE.map(p => ({ x: p.x, y: Math.round(p.y * 1000) / 10 })),
+      borderColor: cssVar('--accent'), borderWidth: 3,
+      pointRadius: 0, pointHoverRadius: 0, fill: false, order: 1
+    });
+  }
+  list.push({
+    label: '実測', data: POINTS, showLine: false,
+    borderColor: cssVar('--text-mute'), backgroundColor: cssVar('--text-mute'),
+    pointRadius: COUNTS.map(n => 2 + 4 * Math.sqrt(n / MAXCOUNT)),
+    pointHoverRadius: 8, order: 2
+  });
+  return list;
+}
+
+const levelChart = new Chart(document.getElementById('levelChart'), {
+  type: 'line',
+  data: { datasets: datasets() },
+  options: {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { intersect: false, mode: 'nearest', axis: 'x' },
+    plugins: {
+      legend: { display: true, position: 'bottom',
+                labels: { color: cssVar('--text-sub'), boxWidth: 18, font: { size: 11 },
+                          usePointStyle: true, pointStyle: 'line',
+                          // 帯の内部データは凡例に出さない
+                          filter: item => item.text !== '信頼区間下限' } },
+      tooltip: {
+        filter: item => item.dataset.label !== '信頼区間下限',
+        callbacks: {
+          title: items => 'レベル差 ' + (items[0].parsed.x > 0 ? '+' : '')
+                          + items[0].parsed.x.toFixed(2),
+          label: c => c.dataset.label + ' ' + c.parsed.y + '%'
+        }
+      }
+    },
+    scales: scales()
+  }
+});
+
+document.addEventListener('themechange', function () {
+  levelChart.data.datasets = datasets();
+  levelChart.options.scales = scales();
+  levelChart.update('none');
+});
+</script>
+{% endif %}
+{% endblock %}

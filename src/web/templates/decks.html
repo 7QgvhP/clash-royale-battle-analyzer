@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}自デッキ | クラロワ対戦分析{% endblock %}
+
+{% block content %}
+
+<h2>デッキグループ別の成績</h2>
+
+{% if rows %}
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>デッキ</th>
+      <th class="num">対戦</th>
+      <th class="num">勝率</th>
+      <th class="num">平均Lv</th>
+      <th class="num">最終使用</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr class="{% if not row.reliable %}unreliable{% endif %}">
+      <td>
+        {{ m.deck_row(row.cards, 'deck deck-lg') }}
+        <div style="margin-top:6px">
+          <strong style="font-weight:500">{{ row.label }}</strong>
+          {% if not row.reliable %}<span class="badge">参考値</span>{% endif %}
+        </div>
+      </td>
+      <td class="num">{{ row.total }}</td>
+      <td class="num">{{ m.rate_cell(row) }}</td>
+      <td class="num">{{ row.avg_level or "--" }}</td>
+      <td class="num">{{ row.last_used | jst }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+  <div class="empty">該当する対戦がありません。</div>
+{% endif %}
+
+<div class="note">
+  8枚中{{ config_threshold if config_threshold else 6 }}枚以上が一致するデッキは同一グループとして集計している。
+  カードを1〜2枚入れ替えても履歴が分断されない。<br>
+  デッキの呼び名は、コストの高いカード3枚から自動で付けている。
+</div>
+
+{% endblock %}

@@ -1,0 +1,56 @@
+# clash-royale-battle-analyzer 設定ファイル
+# 秘密情報（APIトークン・プレイヤータグ）は .env に置くこと。
+
+analysis:
+  # 勝率をグレー表示（参考値扱い）にする試合数のしきい値
+  min_matches: 20
+  # 信頼区間の水準（95%）に対応するzスコア
+  z_score: 1.96
+  # レベル差を集計する刻み幅。level_diff は必ず 0.125 の倍数になるため、
+  # 0.125 が最小。細かくするほど1区間あたりの試合数が減り、線が振れやすくなる。
+  level_bucket_step: 0.25
+  # 【未使用】v1.8.0 で傾向線を廃止し、ロジスティック回帰の推定曲線に置き換えた。
+  # 設定の互換のため残しているが、どこからも参照されない。
+  level_trend_window: 0.5
+
+  # 引き分けを勝率計算の母数から除外するか
+  exclude_draws: false
+
+  # 集計対象とするバトル種別。ここに無い種別は記録のみ行い集計しない。
+  # PvP = ラダー（トロフィーロード） / pathOfLegend = ランク戦
+  target_battle_types:
+    - PvP
+    - pathOfLegend
+
+  # 集計対象とするデッキ選択方式。
+  # collection 以外（draftCompetitive など）はデッキを自分で組んでいないため除外する。
+  target_deck_selections:
+    - collection
+
+deck_grouping:
+  # 8枚中この枚数以上が一致するデッキを同一グループとみなす
+  similarity_threshold: 6
+
+collector:
+  # APIリクエストの最大リトライ回数
+  max_retries: 3
+  # リトライ時の初期待機秒数（指数バックオフ）
+  backoff_seconds: 2
+  # リクエストのタイムアウト秒数
+  timeout_seconds: 20
+
+web:
+  host: "127.0.0.1"
+  # 5000番や8080番は他のアプリと衝突しやすいため、使われにくい番号を既定とする。
+  # 一時的に変えたい場合は起動時に --port で上書きできる。
+  port: 8730
+
+publish:
+  # 静的サイトを Cloudflare Pages へ公開するか
+  enabled: true
+  # Cloudflare Pages のプロジェクト名。公開URLは
+  # https://<project_name>.pages.dev/<推測困難な文字列>/ になる。
+  project_name: "cr-analyzer"
+  # 公開サイトの対戦履歴に載せる件数。全件を出すと絞り込みの組み合わせ分だけ
+  # ページが肥大するため上限を設ける。増やすと1ページの読み込みが重くなる。
+  history_limit: 100

@@ -1,0 +1,25 @@
+# 秘密情報（APIトークン・プレイヤータグ）
+.env
+
+# Cloudflare の認証キャッシュ（account_id を含む）
+.wrangler/
+
+# 収集データ。対戦履歴とプレイヤータグを含むため公開しない
+data/battles.db
+data/battles.db-journal
+data/backups/
+data/api_probe.json
+data/logs/
+
+# APIから取得・生成する画像。再取得できるため持たない
+data/card_images/
+data/card_images_web/
+
+# 公開サイトの生成物。秘密URLのディレクトリ名を含む
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
