@@ -107,6 +107,9 @@ WORD_LABELS = {
     "Melee": "近接", "Ground": "地上", "Air": "空中", "Buildings": "建物のみ",
 }
 
+# 段階別の値をつなぐ区切り。ゲーム内の「35-120-422」という表記に合わせる。
+STAGE_JOIN = "-"
+
 # 段階の呼び名。数字の接頭辞は通常「時間経過でダメージが上がる段階」を指すが、
 # カードによって意味が違うため、そこだけ英語カード名で上書きする。
 # 既定は「N段階目」。
@@ -225,20 +228,78 @@ def dps_label(dmg_key, speed_key, card_name_en=None):
     return f"{label}（{stage_label(stage, card_name_en)}）" if stage else label
 
 
+def progressive(card_name_en=None):
+    """数字の接頭辞が「時間経過で上がる段階」を意味するかどうか。
+
+    意味が違うカードだけ STAGE_LABELS に登録してあるので、そこに無ければ
+    通常の段階とみなす。段階であれば、ゲーム内と同じ 35-120-422 の形で
+    1行にまとめて表示できる。
+    """
+    return (card_name_en or "") not in STAGE_LABELS
+
+
+def _groups(keys, card_name_en=None):
+    """表示のまとまりを [(種類, [キー])] で返す。
+
+    段階が時間経過を表すカードでは、同じ種類の段階別の値を1つにまとめる。
+    ゲーム内も「35-120-422」と続けて書くため、そちらに合わせる。
+    意味が違うカード（ボイド）は値が減っていくので、まとめず段階ごとに出す。
+    """
+    order, bucket = [], {}
+    for key in keys:
+        base = base_stat(key)
+        if base not in bucket:
+            order.append(base)
+            bucket[base] = []
+        bucket[base].append(key)
+
+    join = progressive(card_name_en)
+    out = []
+    for base in order:
+        group = bucket[base]
+        if join and len(group) > 1:
+            out.append((base, group))
+        else:
+            out.extend((base, [k]) for k in group)
+    return out
+
+
+def _joined(values):
+    """段階別の値をゲーム内と同じ並びにする。"""
+    return STAGE_JOIN.join("--" if v is None else str(v) for v in values)
+
+
 def unit_rows(unit, level, card_name_en=None):
     """1ユニット分の、指定レベルでの数値を並べる。"""
-    rows = [{"label": stat_label(k, card_name_en), "value": scale(unit[k], level)}
-            for k in scaled_keys(unit)]
-    for dmg_key, speed_key in dps_pairs(unit):
-        rows.append({"label": dps_label(dmg_key, speed_key, card_name_en),
-                     "value": _dps(scale(unit[dmg_key], level), unit[speed_key])})
+    rows = []
+    for base, keys in _groups(scaled_keys(unit), card_name_en):
+        if len(keys) > 1:
+            rows.append({"label": STAT_LABELS.get(base, base),
+                         "value": _joined([scale(unit[k], level) for k in keys])})
+        else:
+            rows.append({"label": stat_label(keys[0], card_name_en),
+                         "value": scale(unit[keys[0]], level)})
+
+    pairs = dps_pairs(unit)
+    if progressive(card_name_en) and len(pairs) > 1:
+        rows.append({"label": "秒間ダメージ",
+                     "value": _joined([_dps(scale(unit[d], level), unit[sp])
+                                       for d, sp in pairs])})
+    else:
+        for dmg_key, speed_key in pairs:
+            rows.append({"label": dps_label(dmg_key, speed_key, card_name_en),
+                         "value": _dps(scale(unit[dmg_key], level), unit[speed_key])})
     return rows
 
 
 def fixed_rows(unit, card_name_en=None):
     """レベルで変わらない値。攻撃速度が段階ごとに違うカードにも対応する。"""
+    speeds = _speed_keys(unit)
+    if progressive(card_name_en) and len(speeds) > 1:
+        return [{"label": "攻撃速度", "value": _joined([unit[k] for k in speeds])}]
+
     rows = []
-    for key in _speed_keys(unit):
+    for key in speeds:
         _, _, stage = key.partition(STAGE_SEP)
         label = "攻撃速度"
         if stage:
@@ -251,19 +312,30 @@ def level_table(unit, levels, card_name_en=None):
     """ユニットのレベル別の数値表を組み立てる。
 
     列はそのユニットが実際に持っている項目だけにする。全カード共通の列を
-    並べると、大半が空欄の表になって読み取りづらい。
+    並べると、大半が空欄の表になって読み取りづらい。段階のあるカードは
+    数値カードと同じく1列にまとめる。
     """
-    keys = scaled_keys(unit)
-    dps = dps_pairs(unit)
-    columns = [stat_label(k, card_name_en) for k in keys]
-    columns += [dps_label(d, sp, card_name_en) for d, sp in dps]
+    groups = _groups(scaled_keys(unit), card_name_en)
+    pairs = dps_pairs(unit)
+    join_dps = progressive(card_name_en) and len(pairs) > 1
+
+    columns = [STAT_LABELS.get(base, base) if len(keys) > 1
+               else stat_label(keys[0], card_name_en)
+               for base, keys in groups]
+    if join_dps:
+        columns.append("秒間ダメージ")
+    else:
+        columns += [dps_label(d, sp, card_name_en) for d, sp in pairs]
 
     rows = []
     for level in levels:
         # キー名を values にすると、テンプレート側で辞書の values() が
         # 優先されてしまうため cells とする
-        cells = [scale(unit[k], level) for k in keys]
-        cells += [_dps(scale(unit[d], level), unit[sp]) for d, sp in dps]
+        cells = [_joined([scale(unit[k], level) for k in keys]) if len(keys) > 1
+                 else scale(unit[keys[0]], level)
+                 for _, keys in groups]
+        dps_values = [_dps(scale(unit[d], level), unit[sp]) for d, sp in pairs]
+        cells += [_joined(dps_values)] if join_dps else dps_values
         rows.append({"level": level, "cells": cells})
     return {"columns": columns, "rows": rows}
 

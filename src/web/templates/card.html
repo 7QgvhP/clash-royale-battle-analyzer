@@ -52,13 +52,15 @@
     {% for row in u.rows %}
     <div class="metric">
       <div class="metric-label">{{ row.label }}</div>
-      <div class="metric-value">{{ row.value }}</div>
+      {# 段階表記（35-120-422）は桁が伸びるため、折り返さず字を詰める #}
+      <div class="metric-value {% if '-' in row.value | string %}staged{% endif %}">{{ row.value }}</div>
     </div>
     {% endfor %}
     {% for f in u.fixed %}
     <div class="metric">
       <div class="metric-label">{{ f.label }}</div>
-      <div class="metric-value">{{ f.value }}<span style="font-size:14px">秒</span></div>
+      <div class="metric-value {% if '-' in f.value | string %}staged{% endif %}">{{ f.value }}<span
+        style="font-size:14px">秒</span></div>
       <div class="metric-sub">レベルで変わらない</div>
     </div>
     {% endfor %}

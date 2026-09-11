@@ -642,6 +642,14 @@ body.hide-unreliable tr.unreliable { display: none; }
 
 .source-note a { color: var(--text-sub); }
 
+/* 段階別の値（35-120-422）。数字が3つ並ぶぶん桁が伸びるので、
+   折り返さずに収まるよう字を詰める */
+.metric-value.staged {
+  font-size: 21px;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
 /* カード画像のリンク。画像そのものの見た目は変えない */
 .card-link {
   display: inline-block;
@@ -649,6 +657,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 }
 
 @media (max-width: 640px) {
+  .metric-value.staged { font-size: 17px; }
   .card-hero-img { width: 56px; }
   .card-hero-name { font-size: 19px; }
   .attr-table th { width: 50%; }
