@@ -181,11 +181,15 @@ def weak_cards(conn, filters):
     """画面2: 苦手・得意カード。"""
     overall = stats_analysis.overall(conn, filters, config)
     rows, total = cards_analysis.opponent_card_stats(conn, filters, config, overall["rate"])
+    max_total = max((r["total"] for r in rows), default=0)
     return {
         "overall": overall,
         "rows": rows,
         "total_matches": total,
         "supports": cards_analysis.support_card_stats(conn, filters, config, overall["rate"]),
+        # 対戦数と勝率の散布図に重ねる「偶然で説明できる範囲」
+        "funnel": cards_analysis.funnel_bounds(overall["rate"], max_total, config.z_score),
+        "max_total": max_total,
     }
 
 

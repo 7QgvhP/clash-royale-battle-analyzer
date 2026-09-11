@@ -662,3 +662,10 @@ body.hide-unreliable tr.unreliable { display: none; }
   .card-hero-name { font-size: 19px; }
   .attr-table th { width: 50%; }
 }
+
+/* ファネルプロットはカード画像を点に使うため、通常のグラフより高さを取る */
+.chart-tall { height: 420px; }
+
+@media (max-width: 640px) {
+  .chart-tall { height: 340px; }
+}
