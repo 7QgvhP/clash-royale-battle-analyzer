@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}クラロワ対戦分析{% endblock %}</title>
+  {# 数字と英字だけ Inter にする。和文の字形は持たないため、和文は OS 標準のまま。
+     和文フォントは数MBあり、スマートフォンで重くなるので読み込まない。
+     display=swap で、読み込み前は OS 標準で表示し、崩れを出さない。 #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap">
   <link rel="stylesheet" href="{{ asset_url('style.css') }}">
 
   {# ホーム画面に追加したときにアプリのように起動させる（PWA） #}
@@ -156,6 +162,19 @@
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// グラフの文字も本文と同じ書体にする。グラフは描いた時点の書体で固定されるため、
+// フォントの読み込みが終わったら描き直す。
+(function () {
+  if (!window.Chart) return;
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () {
+      Object.values(Chart.instances || {}).forEach(function (chart) { chart.update('none'); });
+    });
+  }
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -40,6 +40,14 @@
   --card-shadow: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.16)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.12));
   --bar: #cdcbf3;
 
+  /* 文字サイズの刻み。本文まわりはこの5段階に揃える。
+     大きな数字（指標・トロフィー）はこれとは別に、表示用の大きさを持つ。 */
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+
   color-scheme: light;
 }
 
@@ -121,7 +129,8 @@ body {
   padding-right: env(safe-area-inset-right);
   /* タップ時の青い矩形を消す。独自のhover/activeで代替する */
   -webkit-tap-highlight-color: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+  /* 数字と英字は Inter、和文は各 OS の標準フォントで表示する */
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
                "Yu Gothic UI", "Noto Sans JP", sans-serif;
   font-size: 14px;
   line-height: 1.65;
@@ -202,7 +211,7 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: 22px;
 }
 .filters label {
-  font-size: 12px; color: var(--text-mute); font-weight: 500;
+  font-size: var(--fs-sm); color: var(--text-mute); font-weight: 500; letter-spacing: 0.04em;
   display: inline-flex; align-items: center; gap: 6px;
 }
 .filters select, .player-switch {
@@ -220,7 +229,7 @@ a { color: inherit; text-decoration: none; }
 .filters select:focus-visible, .player-switch:focus-visible {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.player-switch { font-size: 15px; font-weight: 600; padding: 5px 28px 5px 10px; }
+.player-switch { font-size: var(--fs-lg); font-weight: 600; padding: 5px 28px 5px 10px; }
 
 .filters input[type="checkbox"] {
   width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer;
@@ -238,18 +247,18 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--edge), var(--shadow);
 }
 .metric-label {
-  font-size: 11px; color: var(--text-mute); font-weight: 600; letter-spacing: 0.03em;
+  font-size: var(--fs-xs); color: var(--text-mute); font-weight: 600; letter-spacing: 0.08em;
 }
 .metric-value {
-  font-size: 28px; font-weight: 650; line-height: 1.25;
-  letter-spacing: -0.02em; margin-top: 2px;
+  font-size: 28px; font-weight: 700; line-height: 1.2;
+  letter-spacing: -0.035em; margin-top: 4px;
 }
 .metric-sub { font-size: 12px; color: var(--text-mute); }
 
 /* ---------- 見出し・表 ---------- */
 
 h2 {
-  font-size: 15px; font-weight: 650; letter-spacing: -0.01em;
+  font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.015em;
   margin: 30px 0 12px; display: flex; align-items: baseline; gap: 10px;
 }
 
@@ -261,8 +270,8 @@ table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 10px 14px; }
 thead th {
   background: var(--surface);
-  font-size: 11px; color: var(--text-mute); font-weight: 600;
-  letter-spacing: 0.03em; white-space: nowrap;
+  font-size: var(--fs-xs); color: var(--text-mute); font-weight: 600;
+  letter-spacing: 0.08em; white-space: nowrap;
   border-bottom: 1px solid var(--border);
 }
 tbody tr { border-top: 1px solid var(--border); transition: background 0.12s; }
@@ -283,7 +292,7 @@ tr.unreliable .rate { color: var(--text-mute); }
 .card-meta { font-size: 11px; color: var(--text-mute); }
 
 /* 勝率は数値の下に細いバーを添え、一覧での比較を速くする。 */
-.rate { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.rate { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.02em; }
 .rate-bar {
   height: 3px; border-radius: 2px; background: var(--surface-2);
   margin: 5px 0 0 auto; width: 56px; overflow: hidden;
@@ -459,7 +468,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4 4 5-7 5 7 4-4v9H3z' fill='black'/></svg>") center/18px no-repeat;
 }
 .brand-name {
-  font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+  font-size: 20px; font-weight: 800; letter-spacing: -0.03em;
   color: var(--text); white-space: nowrap;
 }
 
@@ -485,8 +494,8 @@ body.hide-unreliable tr.unreliable { display: none; }
 }
 .metric-hero .metric-label { color: var(--accent); }
 .hero-value {
-  font-size: 52px; font-weight: 700; line-height: 1.1;
-  letter-spacing: -0.03em; color: var(--accent);
+  font-size: 52px; font-weight: 800; line-height: 1.05;
+  letter-spacing: -0.045em; color: var(--accent);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   margin-top: 2px;
 }
@@ -522,7 +531,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 }
 .match-hero-main { display: flex; align-items: center; gap: 14px; }
 .match-score {
-  font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+  font-size: 32px; font-weight: 800; letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
 .match-hero-meta { font-size: 12px; color: var(--text-mute); margin-top: 4px; }
