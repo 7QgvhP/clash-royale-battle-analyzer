@@ -259,22 +259,41 @@ a { color: inherit; text-decoration: none; }
 
 h2 {
   font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.015em;
-  margin: 30px 0 12px; display: flex; align-items: baseline; gap: 10px;
+  margin: 32px 0 12px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
 }
+/* 見出しの横の補足は、本文より一段控えめにして見出しを立てる */
+h2 > .card-meta { font-size: var(--fs-sm); font-weight: 500; letter-spacing: 0.01em; }
 
 .table-wrap {
+  --wrap-radius: var(--radius-lg);
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); box-shadow: var(--edge), var(--shadow); overflow-x: auto;
+  border-radius: var(--wrap-radius); box-shadow: var(--edge), var(--shadow); overflow-x: auto;
 }
 table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 10px 14px; }
+th, td { text-align: left; padding: 12px 16px; }
 thead th {
   background: var(--surface);
   font-size: var(--fs-xs); color: var(--text-mute); font-weight: 600;
   letter-spacing: 0.08em; white-space: nowrap;
-  border-bottom: 1px solid var(--border);
+  /* 下線は影で描く。border-collapse の表では、固定した見出しのセルに
+     罫線が付いてこないため */
+  box-shadow: inset 0 -1px 0 var(--border);
 }
-tbody tr { border-top: 1px solid var(--border); transition: background 0.12s; }
+/* 行の区切りは見出しの下線より一段薄くし、行の並びを静かに見せる */
+tbody tr {
+  border-top: 1px solid var(--border);
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+  transition: background 0.12s;
+}
+
+/* 横幅に収まる表だけ、見出しをヘッダの直下に固定する（判定は base.html） */
+.table-wrap.fits { overflow: visible; }
+.table-wrap.fits thead th { position: sticky; top: var(--header-h, 0px); z-index: 5; }
+/* 箱のはみ出し制御を外したぶん、角を見出しと最終行で丸めておく */
+.table-wrap.fits thead th:first-child { border-top-left-radius: var(--wrap-radius); }
+.table-wrap.fits thead th:last-child { border-top-right-radius: var(--wrap-radius); }
+.table-wrap.fits tbody tr:last-child td:first-child { border-bottom-left-radius: var(--wrap-radius); }
+.table-wrap.fits tbody tr:last-child td:last-child { border-bottom-right-radius: var(--wrap-radius); }
 tbody tr:first-child { border-top: none; }
 tbody tr:hover { background: var(--surface-hover); }
 td.num, th.num { text-align: right; white-space: nowrap; }
@@ -294,11 +313,11 @@ tr.unreliable .rate { color: var(--text-mute); }
 /* 勝率は数値の下に細いバーを添え、一覧での比較を速くする。 */
 .rate { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.02em; }
 .rate-bar {
-  height: 3px; border-radius: 2px; background: var(--surface-2);
-  margin: 5px 0 0 auto; width: 56px; overflow: hidden;
+  height: 5px; border-radius: 999px; background: var(--surface-2);
+  margin: 6px 0 0 auto; width: 64px; overflow: hidden;
 }
 .rate-bar span {
-  display: block; height: 100%; border-radius: 2px;
+  display: block; height: 100%; border-radius: 999px;
   background: var(--bar); width: var(--v, 0%);
 }
 .ci { font-size: 11px; color: var(--text-mute); }
@@ -311,9 +330,15 @@ tr.unreliable .rate { color: var(--text-mute); }
 .delta.pos { color: var(--pos); background: var(--pos-soft); }
 
 .badge {
-  font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; padding: 2px 8px 2px 7px; border-radius: 999px;
   background: var(--surface-2); color: var(--text-sub);
-  margin-left: 6px; white-space: nowrap; vertical-align: 1px;
+  margin-left: 6px; white-space: nowrap; vertical-align: 1px; line-height: 1.5;
+}
+/* 先頭の小さな点。文字と同じ色を薄く使い、新しい色は足さない */
+.badge::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; opacity: 0.55; flex-shrink: 0;
 }
 
 /* ---------- デッキ表示 ---------- */
@@ -394,8 +419,8 @@ body.hide-unreliable tr.unreliable { display: none; }
   .metric-value { font-size: 22px; }
 
   h2 { font-size: 14px; margin: 22px 0 10px; }
-  .table-wrap { border-radius: var(--radius); }
-  th, td { padding: 9px 7px; }
+  .table-wrap { --wrap-radius: var(--radius); }
+  th, td { padding: 10px 8px; }
   thead th { font-size: 10px; }
   .card-img { width: 34px; height: 41px; }
   .card-name { font-size: 13px; }
@@ -403,10 +428,11 @@ body.hide-unreliable tr.unreliable { display: none; }
      対戦履歴の日時やモードは残す必要があるため、範囲を表に限定する。 */
   .table-wrap .card-meta { display: none; }
   .rate { font-size: 13px; }
-  .rate-bar { width: 40px; }
+  .rate-bar { width: 44px; height: 4px; }
   .ci { font-size: 10px; }
   .delta { font-size: 11px; padding: 2px 6px; }
-  .badge { font-size: 9px; padding: 1px 5px; margin-left: 4px; }
+  .badge { font-size: 9px; padding: 1px 6px 1px 5px; margin-left: 4px; gap: 3px; }
+  .badge::before { width: 4px; height: 4px; }
 
   .deck img { width: 28px; height: 34px; }
   .deck-lg img { width: 34px; height: 41px; }
