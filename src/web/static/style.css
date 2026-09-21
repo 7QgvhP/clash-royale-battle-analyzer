@@ -694,10 +694,15 @@ body.hide-unreliable tr.unreliable { display: none; }
 
 .source-note a { color: var(--text-sub); }
 
-/* 段階別の値（35-120-422）。数字が3つ並ぶぶん桁が伸びるので、
-   折り返さずに収まるよう字を詰める */
+/* 段階別の値（35-120-422）や回数付きの値（122×3（366））。数字が並ぶぶん桁が伸びる。
+   折り返すと読みにくいので1行に保ち、そのかわり箱を2マス分の幅にする。
+   それでも狭い画面では、箱の幅に合わせて文字の大きさを自動で下げる
+   （cqi は箱の幅に対する割合。対応しない古いブラウザでは直前の 21px が使われる）。 */
+.metric:has(> .metric-value.staged) { grid-column: span 2; }
+.metric { container-type: inline-size; }
 .metric-value.staged {
   font-size: 21px;
+  font-size: clamp(13px, 11cqi, 21px);
   letter-spacing: -0.03em;
   white-space: nowrap;
 }
@@ -709,7 +714,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 }
 
 @media (max-width: 640px) {
-  .metric-value.staged { font-size: 17px; }
+  .metric-value.staged { font-size: 17px; font-size: clamp(13px, 11cqi, 19px); }
   .card-hero-img { width: 56px; }
   .card-hero-name { font-size: 19px; }
   .attr-table th { width: 50%; }
