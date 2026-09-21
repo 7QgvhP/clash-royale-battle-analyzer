@@ -26,9 +26,18 @@
   --warn-soft: #fdf4e3;
   --warn-text: #92610b;
 
+  /* 角丸は3段階に限る。値がばらつくと、わずかな不揃いが全体の雑さとして見える。
+     小: 箱の中の要素（バッジ・ナビの各項目） 中: 操作部品と注記 大: カードやパネル */
+  --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;
-  --shadow: 0 1px 2px rgba(16, 16, 20, 0.04), 0 4px 12px rgba(16, 16, 20, 0.04);
+  /* 影は2層で柔らかくする。raised は画面の主役（トロフィーなど）だけに使う */
+  --shadow: 0 1px 2px rgba(16, 16, 20, 0.04), 0 2px 8px -2px rgba(16, 16, 20, 0.06);
+  --shadow-raised: 0 1px 2px rgba(16, 16, 20, 0.05), 0 10px 28px -8px rgba(16, 16, 20, 0.16);
+  /* 箱の上辺の細いハイライト。明るいテーマでは不要なので透明にしておく */
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0);
+  /* カード画像をゲーム内のカードのように少し浮かせる */
+  --card-shadow: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.16)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.12));
   --bar: #cdcbf3;
 
   color-scheme: light;
@@ -58,7 +67,10 @@
     --warn-soft: #2b2312;
     --warn-text: #e5b567;
 
-    --shadow: none;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 28px -10px rgba(0, 0, 0, 0.7);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --card-shadow: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3));
     --bar: #3a3670;
 
     color-scheme: dark;
@@ -87,7 +99,10 @@
   --warn-soft: #2b2312;
   --warn-text: #e5b567;
 
-  --shadow: none;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 28px -10px rgba(0, 0, 0, 0.7);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --card-shadow: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3));
   --bar: #3a3670;
 
   color-scheme: dark;
@@ -158,7 +173,7 @@ a { color: inherit; text-decoration: none; }
 .theme-toggle {
   width: 34px; height: 34px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border); border-radius: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--surface); color: var(--text-sub);
   cursor: pointer; font-size: 15px; line-height: 1;
   transition: background 0.15s, color 0.15s;
@@ -169,16 +184,16 @@ a { color: inherit; text-decoration: none; }
 
 .nav {
   display: flex; gap: 2px; flex-wrap: wrap;
-  background: var(--surface-2); border-radius: 12px;
+  background: var(--surface-2); border-radius: var(--radius);
   padding: 4px; margin: 20px 0 16px;
 }
 .nav a {
-  padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 500;
+  padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
   color: var(--text-sub); white-space: nowrap;
   transition: background 0.15s, color 0.15s;
 }
 .nav a:hover { color: var(--text); }
-.nav a.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.nav a.active { background: var(--surface); color: var(--text); box-shadow: var(--edge), var(--shadow); }
 
 /* ---------- フィルタ ---------- */
 
@@ -194,7 +209,7 @@ a { color: inherit; text-decoration: none; }
   appearance: none; -webkit-appearance: none;
   font: inherit; font-size: 13px; font-weight: 500;
   padding: 7px 30px 7px 12px;
-  border: 1px solid var(--border); border-radius: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius);
   background-color: var(--surface); color: var(--text); cursor: pointer;
   background-repeat: no-repeat; background-position: right 10px center;
   background-size: 10px;
@@ -220,7 +235,7 @@ a { color: inherit; text-decoration: none; }
 .metric {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: 14px 16px 16px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--edge), var(--shadow);
 }
 .metric-label {
   font-size: 11px; color: var(--text-mute); font-weight: 600; letter-spacing: 0.03em;
@@ -240,7 +255,7 @@ h2 {
 
 .table-wrap {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow-x: auto;
+  border-radius: var(--radius-lg); box-shadow: var(--edge), var(--shadow); overflow-x: auto;
 }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 10px 14px; }
@@ -259,10 +274,10 @@ tr.unreliable .rate { color: var(--text-mute); }
 
 .card-img {
   width: 40px; height: 48px; object-fit: contain; flex-shrink: 0;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+  filter: var(--card-shadow);
 }
 .card-img.placeholder {
-  background: var(--surface-2); border-radius: 6px; display: inline-block;
+  background: var(--surface-2); border-radius: var(--radius-sm); display: inline-block;
 }
 .card-name { font-size: 14px; font-weight: 550; letter-spacing: -0.005em; }
 .card-meta { font-size: 11px; color: var(--text-mute); }
@@ -281,7 +296,7 @@ tr.unreliable .rate { color: var(--text-mute); }
 
 .delta {
   font-weight: 650; font-size: 13px;
-  padding: 3px 8px; border-radius: 7px; display: inline-block;
+  padding: 3px 8px; border-radius: var(--radius-sm); display: inline-block;
 }
 .delta.neg { color: var(--neg); background: var(--neg-soft); }
 .delta.pos { color: var(--pos); background: var(--pos-soft); }
@@ -297,7 +312,7 @@ tr.unreliable .rate { color: var(--text-mute); }
 .deck { display: inline-flex; gap: 3px; flex-wrap: wrap; }
 .deck img {
   width: 34px; height: 41px; object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.16));
+  filter: var(--card-shadow);
 }
 .deck-lg img { width: 46px; height: 55px; }
 
@@ -312,7 +327,7 @@ tr.unreliable .rate { color: var(--text-mute); }
 .match-row:hover { background: var(--surface-hover); }
 .result-win, .result-loss, .result-draw {
   font-weight: 650; font-size: 13px;
-  padding: 2px 9px; border-radius: 7px; display: inline-block;
+  padding: 2px 9px; border-radius: var(--radius-sm); display: inline-block;
 }
 .result-win { color: var(--pos); background: var(--pos-soft); }
 .result-loss { color: var(--neg); background: var(--neg-soft); }
@@ -328,7 +343,7 @@ tr.unreliable .rate { color: var(--text-mute); }
 .chart-box {
   position: relative; height: 250px; margin-bottom: 26px;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 14px 16px 10px; box-shadow: var(--shadow);
+  border-radius: var(--radius-lg); padding: 14px 16px 10px; box-shadow: var(--edge), var(--shadow);
 }
 .empty {
   color: var(--text-mute); padding: 40px 0; text-align: center; font-size: 13px;
@@ -338,7 +353,7 @@ tr.unreliable .rate { color: var(--text-mute); }
 
 .seg-link {
   font-size: 12px; font-weight: 500; color: var(--text-mute);
-  padding: 3px 9px; border-radius: 7px;
+  padding: 3px 9px; border-radius: var(--radius-sm);
 }
 .seg-link.on { background: var(--surface-2); color: var(--text); }
 
@@ -437,7 +452,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   border-right: 1px solid var(--border);
 }
 .brand-mark {
-  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: var(--radius-sm); flex-shrink: 0;
   background: var(--accent);
   /* 王冠を模した形。外部素材に依存させない */
   -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4 4 5-7 5 7 4-4v9H3z' fill='black'/></svg>") center/18px no-repeat;
@@ -466,6 +481,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 .metric-hero {
   display: flex; flex-direction: column; justify-content: center;
   background: var(--accent-soft); border-color: transparent;
+  box-shadow: var(--edge), var(--shadow-raised);
 }
 .metric-hero .metric-label { color: var(--accent); }
 .hero-value {
@@ -501,7 +517,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 
 .match-hero {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+  border-radius: var(--radius-lg); box-shadow: var(--edge), var(--shadow-raised);
   padding: 16px 18px; margin-bottom: 14px;
 }
 .match-hero-main { display: flex; align-items: center; gap: 14px; }
@@ -518,13 +534,13 @@ body.hide-unreliable tr.unreliable { display: none; }
 .card-grid {
   display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+  border-radius: var(--radius-lg); box-shadow: var(--edge), var(--shadow);
   padding: 14px 16px;
 }
 .card-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
 .card-img-lg {
   width: 100%; height: auto; object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+  filter: var(--card-shadow);
 }
 .card-cell-name {
   font-size: 11px; color: var(--text-sub); text-align: center;
@@ -567,7 +583,8 @@ body.hide-unreliable tr.unreliable { display: none; }
   margin-bottom: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--edge), var(--shadow-raised);
 }
 
 .card-hero-img {
@@ -610,7 +627,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 /* 基本情報は項目名と値の2列。項目名を左に固定幅で並べる */
@@ -637,7 +654,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   line-height: 1.7;
   color: var(--text-mute);
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: var(--radius);
 }
 
 .source-note a { color: var(--text-sub); }
@@ -682,7 +699,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .spell-summary {
@@ -692,7 +709,8 @@ body.hide-unreliable tr.unreliable { display: none; }
   line-height: 1.7;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--edge), var(--shadow);
 }
 
 .spell-summary .sp-sub { font-size: 12px; color: var(--text-mute); }
@@ -745,7 +763,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 }
 
 /* いま画面に出している構成 */
-.variants li.current { background: var(--accent-soft); border-radius: 8px; }
+.variants li.current { background: var(--accent-soft); border-radius: var(--radius-sm); }
 
 .variant-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .variant-stat { font-weight: 500; color: var(--text); }
