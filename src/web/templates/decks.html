@@ -8,7 +8,9 @@
 
 {% if rows %}
 <div class="table-wrap">
-<table>
+{# スマートフォンでは行の組み方を変える（style.css の .deck-table）。
+   data-label は、見出し行を使わないときに各値の上へ添える項目名。 #}
+<table class="deck-table">
   <thead>
     <tr>
       <th>デッキ</th>
@@ -53,10 +55,10 @@
         </details>
         {% endif %}
       </td>
-      <td class="num">{{ row.total }}</td>
-      <td class="num">{{ m.rate_cell(row) }}</td>
-      <td class="num">{{ row.avg_level or "--" }}</td>
-      <td class="num">{{ row.last_used | jst }}</td>
+      <td class="num" data-label="対戦">{{ row.total }}</td>
+      <td class="num" data-label="勝率">{{ m.rate_cell(row) }}</td>
+      <td class="num" data-label="平均Lv">{{ row.avg_level or "--" }}</td>
+      <td class="num" data-label="最終使用">{{ row.last_used | jst }}</td>
     </tr>
     {% endfor %}
   </tbody>

@@ -436,6 +436,31 @@ body.hide-unreliable tr.unreliable { display: none; }
   .chart-box { height: 210px; }
 }
 
+/* ---------- 自デッキ（スマートフォン） ----------
+   デッキの列が狭く、カード8枚が3段に折り返して左に固まっていた。
+   1行目にデッキを全幅で置いて8枚を横1列に並べ、2行目に成績を4つ並べる。
+   見出し行は使わず、各値の上に項目名を添える（data-label）。 */
+
+@media (max-width: 640px) {
+  .deck-table thead { display: none; }
+  .deck-table tbody tr {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px 8px; padding: 14px 0;
+  }
+  .deck-table td { padding: 0; }
+  .deck-table td:first-child { grid-column: 1 / -1; }
+  .deck-table td.num { text-align: left; white-space: nowrap; }
+  .deck-table td[data-label]::before {
+    content: attr(data-label); display: block; margin-bottom: 2px;
+    font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.08em; color: var(--text-mute);
+  }
+  .deck-table .rate-bar { margin-left: 0; }
+  /* 8枚を等分して横幅いっぱいに1列で並べる（対戦履歴のデッキと同じ並べ方） */
+  .deck-table .deck-lg { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; width: 100%; }
+  .deck-table .deck-lg .card-link { display: block; }
+  .deck-table .deck-lg img { width: 100%; height: auto; }
+}
+
 /* ---------- スマートフォンでの詰め ---------- */
 
 @media (max-width: 640px) {
