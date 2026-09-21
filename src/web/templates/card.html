@@ -152,6 +152,9 @@
   var name = null;
   if (parent === 'matches' || parent === 'match') {
     name = '対戦の詳細';
+  } else if (parent === 'spells' || last === 'spells') {
+    // 静的サイトは spells/index.html（配信側で spells/ に転送されることもある）
+    name = '呪文';
   } else {
     // 静的サイトは cards.html、サーバー稼働時は /cards。週次は summary-week。
     var key = last.replace(/\.html$/, '').replace(/-week$/, '');

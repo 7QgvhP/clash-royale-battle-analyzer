@@ -109,6 +109,17 @@ def card_url(card_id, static_mode):
     return f"../card/{card_id}.html"
 
 
+def spells_url(static_mode):
+    """呪文で倒せるユニットの画面へのURLを返す。
+
+    絞り込みに依存しないため、組み合わせごとには作らず
+    <secret>/spells/index.html に1つだけ置く。
+    """
+    if not static_mode:
+        return url_for("spells_view")
+    return "../spells/index.html"
+
+
 def asset_url(path, static_mode):
     """CSSや画像へのURLを返す。"""
     if not static_mode:
@@ -132,5 +143,8 @@ def helpers(filters, static_mode):
     def card(card_id):
         return card_url(card_id, static_mode)
 
+    def spells():
+        return spells_url(static_mode)
+
     return {"page_url": page_url, "asset_url": asset, "match_url": match,
-            "card_url": card, "static_mode": static_mode}
+            "card_url": card, "spells_url": spells, "static_mode": static_mode}

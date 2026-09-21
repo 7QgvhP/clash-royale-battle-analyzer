@@ -662,3 +662,61 @@ body.hide-unreliable tr.unreliable { display: none; }
   .card-hero-name { font-size: 19px; }
   .attr-table th { width: 50%; }
 }
+
+/* ---- 呪文で倒せるユニット ---- */
+
+.spell-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.spell-controls select {
+  margin-left: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+
+.spell-summary {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.spell-summary .sp-sub { font-size: 12px; color: var(--text-mute); }
+
+.sp-unit { display: flex; align-items: center; gap: 10px; }
+.sp-unit .card-img { width: 36px; height: auto; }
+
+/* 判定結果のマス。記号を大きく、補足の数字を小さく添える */
+.spell-table td.num b { display: block; font-size: 16px; line-height: 1.2; }
+.spell-table td.num span { display: block; font-size: 11px; color: var(--text-mute); white-space: nowrap; }
+.spell-table .sp-kill { background: var(--pos-soft); }
+.spell-table .sp-kill b { color: var(--pos); }
+.spell-table .sp-shield b { color: var(--accent); }
+.spell-table .sp-survive b { color: var(--text-mute); }
+.spell-table .sp-none { color: var(--text-mute); }
+/* 選んだレベルの列を目立たせる */
+.spell-table th.sp-center { color: var(--accent); }
+.spell-table .sp-empty { text-align: center; color: var(--text-mute); padding: 24px; }
+
+@media (max-width: 640px) {
+  /* 表の補足は狭い画面で隠す既定だが、ここでは派生ユニット名と建物・空中の区別が
+     判定の理解に欠かせない（「墓石」が建物なのか中のスケルトンなのか分からなくなる） */
+  .spell-table .card-meta { display: block; }
+  .sp-unit .card-img { width: 28px; }
+  .sp-unit { gap: 6px; }
+  .spell-table td.num b { font-size: 14px; }
+}

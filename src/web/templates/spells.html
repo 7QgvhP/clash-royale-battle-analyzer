@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}呪文で倒せるユニット | クラロワ対戦分析{% endblock %}
+
+{# 呪文とユニットの性能はプレイヤーや期間に依存しないため、共通のフィルタ行は出さない #}
+{% block filters %}{% endblock %}
+
+{% block content %}
+
+<h2>呪文で倒せるユニット</h2>
+
+<div class="spell-controls">
+  <label>呪文
+    <select id="spell-select">
+      {% for s in calc.spells %}
+        <option value="{{ s.card_id }}">{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>レベル
+    <select id="level-select"></select>
+  </label>
+  <label id="variant-wrap" hidden>命中数
+    <select id="variant-select"></select>
+  </label>
+  <label class="spell-check"><input type="checkbox" id="show-all"> 倒せないものも表示</label>
+</div>
+
+<div class="spell-summary" id="spell-summary"></div>
+
+<div class="table-wrap">
+<table class="spell-table">
+  <thead><tr id="spell-head"></tr></thead>
+  <tbody id="spell-body"></tbody>
+</table>
+</div>
+
+<div class="note">
+  呪文のレベルを L とすると、<strong style="font-weight:600">レベル L−2〜L+2 のユニット</strong>と比べる。
+  そのユニットに存在しないレベル（ウルトラレアの8以下など）は「—」とする。<br>
+  <strong style="font-weight:600">○</strong> は呪文の合計ダメージがHP以上で倒せる、
+  <strong style="font-weight:600">×</strong> は倒せず、数字は残るHP。
+  HPがちょうど0になっても倒れるため、「HP以下」で判定している。<br>
+  <strong style="font-weight:600">盾</strong> はシールドだけを割って本体は無傷。
+  シールドを割ったダメージの余りは本体に届かないため、1回だけ当たる呪文では
+  シールドを持つユニットを倒せない。複数回当たる呪文なら、割ったあとのヒットが本体に入る。<br>
+  持続して当たる呪文（ポイズン・アースクエイク・ゴブリンの呪い）は、範囲内に留まり続けた場合の合計で判定している。<br>
+  数値はカードの性能と同じく、レベル11を基準に1レベルごと1.1倍して算出している。
+  丸めの都合でゲーム内と ±1 ずれることがあるため、境目ぎりぎりの判定は目安として扱うこと。
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 呪文で倒せるユニットの判定。
+// 各レベルの値はサーバー側で算出して埋め込んである（カードの性能ページと数値を揃えるため）。
+// ここでは選ばれた呪文とレベルに対して、比較と表示だけを行う。
+(function () {
+  var DATA = {{ calc | tojson }};
+  var RANGE = 2;  // 呪文のレベルの前後いくつまで比べるか
+
+  var spellSelect = document.getElementById('spell-select');
+  var levelSelect = document.getElementById('level-select');
+  var variantWrap = document.getElementById('variant-wrap');
+  var variantSelect = document.getElementById('variant-select');
+  var showAll = document.getElementById('show-all');
+  var head = document.getElementById('spell-head');
+  var body = document.getElementById('spell-body');
+  var summary = document.getElementById('spell-summary');
+
+  function spellById(id) {
+    return DATA.spells.filter(function (s) { return String(s.card_id) === String(id); })[0];
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // 呪文を当てた結果。シールドは1ヒットで割れても余りは本体へ届かない。
+  function strike(hp, shield, perHit, hits) {
+    for (var i = 0; i < hits; i++) {
+      if (shield > 0) {
+        shield = Math.max(0, shield - perHit);
+      } else {
+        hp -= perHit;
+      }
+    }
+    return { hp: hp, shield: shield };
+  }
+
+  function judge(unit, level, spell, variant) {
+    if (unit.levels.indexOf(level) < 0) return { state: 'none' };
+    var damage = (unit.building && spell.building_damage)
+      ? spell.building_damage[level_key(spellLevel())]
+      : variant.damage[level_key(spellLevel())];
+    var hp = unit.hp[level_key(level)];
+    var shield = unit.shield ? unit.shield[level_key(level)] : 0;
+    var after = strike(hp, shield, damage, spell.hits);
+    if (after.hp <= 0) return { state: 'kill', hp: hp, shield: shield };
+    // シールドに吸収されて本体が無傷のもの（割れたかどうかを問わない）
+    if (shield > 0 && after.hp === hp) return { state: 'shield', hp: hp };
+    return { state: 'survive', left: after.hp, hp: hp };
+  }
+
+  // JSON のキーは文字列になるため、レベルを文字列にして引く
+  function level_key(level) { return String(level); }
+
+  function spellLevel() { return parseInt(levelSelect.value, 10); }
+
+  function currentVariant(spell) {
+    return spell.variants[parseInt(variantSelect.value || '0', 10)] || spell.variants[0];
+  }
+
+  function fillLevels(spell, keep) {
+    var levels = spell.levels;
+    var want = keep && levels.indexOf(keep) >= 0 ? keep : (levels.indexOf(11) >= 0 ? 11 : levels[0]);
+    levelSelect.innerHTML = levels.map(function (lv) {
+      return '<option value="' + lv + '"' + (lv === want ? ' selected' : '') + '>' + lv + '</option>';
+    }).join('');
+  }
+
+  function fillVariants(spell) {
+    var many = spell.variants.length > 1;
+    variantWrap.hidden = !many;
+    variantSelect.innerHTML = spell.variants.map(function (v, i) {
+      return '<option value="' + i + '">' + escapeHtml(v.label || '') + '</option>';
+    }).join('');
+  }
+
+  function cell(result) {
+    if (result.state === 'none') return '<td class="num sp-none">—</td>';
+    if (result.state === 'kill') {
+      return '<td class="num sp-kill"><b>○</b><span>HP ' + result.hp + '</span></td>';
+    }
+    if (result.state === 'shield') {
+      return '<td class="num sp-shield"><b>盾</b><span>シールドのみ</span></td>';
+    }
+    return '<td class="num sp-survive"><b>×</b><span>残り ' + result.left + '</span></td>';
+  }
+
+  function render() {
+    var spell = spellById(spellSelect.value);
+    if (!spell) return;
+    var level = spellLevel();
+    var variant = currentVariant(spell);
+    var damage = variant.damage[level_key(level)];
+
+    var levels = [];
+    for (var lv = level - RANGE; lv <= level + RANGE; lv++) {
+      if (lv >= 1 && lv <= 16) levels.push(lv);
+    }
+
+    // 地上にしか当たらない呪文では、空中ユニットは判定の対象にしない
+    var targets = DATA.units.filter(function (u) { return !(spell.ground_only && u.air); });
+    var skippedAir = DATA.units.length - targets.length;
+
+    var rows = targets.map(function (u) {
+      return { unit: u, results: levels.map(function (lv) { return judge(u, lv, spell, variant); }) };
+    });
+    var killable = rows.filter(function (r) {
+      return r.results.some(function (x) { return x.state === 'kill'; });
+    });
+    var shown = showAll.checked ? rows : killable;
+
+    // 選んだレベルでのHPの低い順。そのレベルが無いユニットは最も近いレベルで比べる。
+    function hpNear(u) {
+      var best = null, gap = 99;
+      u.levels.forEach(function (lv) {
+        if (Math.abs(lv - level) < gap) { gap = Math.abs(lv - level); best = lv; }
+      });
+      return u.hp[level_key(best)];
+    }
+    shown.sort(function (a, b) { return hpNear(a.unit) - hpNear(b.unit); });
+
+    var perHit = damage;
+    var total = perHit * spell.hits;
+    var damageText = spell.hits > 1
+      ? perHit + '×' + spell.hits + '（合計 ' + total + '）'
+      : String(total);
+    var lines = [
+      '<strong>Lv.' + level + ' ' + escapeHtml(spell.name) +
+        (variant.label ? '（' + escapeHtml(variant.label) + '）' : '') + '</strong>',
+      'ダメージ ' + damageText
+    ];
+    if (spell.building_damage) {
+      var b = spell.building_damage[level_key(level)];
+      lines.push('建物には ' + b + '×' + spell.hits + '（合計 ' + (b * spell.hits) + '）');
+    }
+    var counts = '倒せるもの ' + killable.length + ' / ' + rows.length + '体';
+    if (skippedAir) counts += '（地上にしか当たらないため、空中の' + skippedAir + '体は対象外）';
+    summary.innerHTML =
+      '<div>' + lines.join(' ・ ') + '</div>' +
+      '<div class="sp-sub">' + counts + '</div>' +
+      (spell.note ? '<div class="sp-sub">' + escapeHtml(spell.note) + '</div>' : '');
+
+    head.innerHTML = '<th>ユニット</th>' + levels.map(function (lv) {
+      return '<th class="num' + (lv === level ? ' sp-center' : '') + '">Lv.' + lv + '</th>';
+    }).join('');
+
+    if (!shown.length) {
+      body.innerHTML = '<tr><td colspan="' + (levels.length + 1) + '" class="sp-empty">' +
+        'このレベルの前後で倒せるユニットはありません。</td></tr>';
+      return;
+    }
+    body.innerHTML = shown.map(function (r) {
+      var u = r.unit;
+      var icon = u.icon_url
+        ? '<a class="card-link" href="' + u.url + '"><img class="card-img" src="' + u.icon_url +
+          '" alt="' + escapeHtml(u.name) + '"></a>'
+        : '';
+      var tags = [];
+      if (u.building) tags.push('建物');
+      if (u.air) tags.push('空中');
+      if (u.shield) tags.push('シールド');
+      var name = '<div class="sp-unit">' + icon + '<div><span class="card-name">' +
+        escapeHtml(u.name) + '</span>' +
+        (u.sub ? '<div class="card-meta">' + escapeHtml(u.sub) + '</div>' : '') +
+        (tags.length ? '<div class="card-meta">' + tags.join('・') + '</div>' : '') +
+        '</div></div>';
+      return '<tr><td>' + name + '</td>' + r.results.map(cell).join('') + '</tr>';
+    }).join('');
+  }
+
+  // 選択をURLに残し、同じ条件のまま共有・再訪できるようにする
+  function saveHash() {
+    var parts = ['spell=' + spellSelect.value, 'lv=' + levelSelect.value];
+    if (!variantWrap.hidden) parts.push('v=' + variantSelect.value);
+    history.replaceState(null, '', '#' + parts.join('&'));
+  }
+
+  function loadHash() {
+    var params = {};
+    location.hash.replace(/^#/, '').split('&').forEach(function (kv) {
+      var p = kv.split('=');
+      if (p[0]) params[p[0]] = p[1];
+    });
+    return params;
+  }
+
+  function onSpellChange(keepLevel) {
+    var spell = spellById(spellSelect.value);
+    fillLevels(spell, keepLevel);
+    fillVariants(spell);
+  }
+
+  var initial = loadHash();
+  if (initial.spell && spellById(initial.spell)) spellSelect.value = initial.spell;
+  else {
+    // 既定はファイアボール。無ければ一覧の先頭
+    var fireball = DATA.spells.filter(function (s) { return s.card_id === 28000000; })[0];
+    if (fireball) spellSelect.value = String(fireball.card_id);
+  }
+  onSpellChange(parseInt(initial.lv, 10));
+  if (initial.v && !variantWrap.hidden) variantSelect.value = initial.v;
+  render();
+
+  spellSelect.addEventListener('change', function () {
+    onSpellChange(spellLevel());
+    render(); saveHash();
+  });
+  [levelSelect, variantSelect].forEach(function (el) {
+    el.addEventListener('change', function () { render(); saveHash(); });
+  });
+  showAll.addEventListener('change', render);
+})();
+</script>
+{% endblock %}
