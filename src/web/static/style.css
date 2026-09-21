@@ -1,6 +1,9 @@
 /* clash-royale-battle-analyzer ダッシュボード
    スマートフォンでの閲覧を主体とし、明暗どちらのテーマにも対応する。
-   色は勝敗の方向とアクセント1色に限定し、装飾目的では使わない。 */
+   色は勝敗の方向とアクセント1色に限定し、装飾目的では使わない。
+   内容を枠や面の箱で囲わない。まとまりは余白と文字の強弱で表し、区切りが要る所
+   （見出しの下・指標の下）にだけ細い線を1本引く。画面のあちこちが四角で囲われると、
+   角を丸めても直角にしても落ち着かないため（v1.14.0）。 */
 
 /* ---------- デザイントークン ---------- */
 
@@ -26,16 +29,10 @@
   --warn-soft: #fdf4e3;
   --warn-text: #92610b;
 
-  /* 角丸は3段階に限る。値がばらつくと、わずかな不揃いが全体の雑さとして見える。
-     小: 箱の中の要素（バッジ・ナビの各項目） 中: 操作部品と注記 大: カードやパネル */
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 16px;
-  /* 影は2層で柔らかくする。raised は画面の主役（トロフィーなど）だけに使う */
-  --shadow: 0 1px 2px rgba(16, 16, 20, 0.04), 0 2px 8px -2px rgba(16, 16, 20, 0.06);
-  --shadow-raised: 0 1px 2px rgba(16, 16, 20, 0.05), 0 10px 28px -8px rgba(16, 16, 20, 0.16);
-  /* 箱の上辺の細いハイライト。明るいテーマでは不要なので透明にしておく */
-  --edge: inset 0 1px 0 rgba(255, 255, 255, 0);
+  /* 角丸は小さな部品にだけ使い、控えめにする。
+     小: バッジ・勝敗などのラベル 中: プルダウンなどの操作部品 */
+  --radius-sm: 4px;
+  --radius: 6px;
   /* カード画像をゲーム内のカードのように少し浮かせる */
   --card-shadow: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.16)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.12));
   --bar: #cdcbf3;
@@ -75,9 +72,6 @@
     --warn-soft: #2b2312;
     --warn-text: #e5b567;
 
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 28px -10px rgba(0, 0, 0, 0.7);
-    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
     --card-shadow: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3));
     --bar: #3a3670;
 
@@ -107,9 +101,6 @@
   --warn-soft: #2b2312;
   --warn-text: #e5b567;
 
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 28px -10px rgba(0, 0, 0, 0.7);
-  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
   --card-shadow: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3));
   --bar: #3a3670;
 
@@ -172,37 +163,40 @@ a { color: inherit; text-decoration: none; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
 
 .status {
-  font-size: 12px; padding: 5px 12px; border-radius: 999px;
-  border: 1px solid var(--border); color: var(--text-sub);
-  background: var(--surface); white-space: nowrap;
+  font-size: 12px; padding: 0 4px; border-radius: var(--radius-sm);
+  color: var(--text-sub); white-space: nowrap;
 }
-.status.error { border-color: var(--neg); background: var(--neg-soft); color: var(--neg); }
-.status.warn { border-color: transparent; background: var(--warn-soft); color: var(--warn-text); }
+/* 異常や注意のときだけ面で目立たせる。平常時は文字だけにする */
+.status.error { background: var(--neg-soft); color: var(--neg); padding: 3px 8px; }
+.status.warn { background: var(--warn-soft); color: var(--warn-text); padding: 3px 8px; }
 
 .theme-toggle {
   width: 34px; height: 34px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); color: var(--text-sub);
+  border: 0; border-radius: var(--radius);
+  background: transparent; color: var(--text-sub);
   cursor: pointer; font-size: 15px; line-height: 1;
   transition: background 0.15s, color 0.15s;
 }
 .theme-toggle:hover { background: var(--surface-hover); color: var(--text); }
 
-/* ---------- ナビ（セグメント） ---------- */
+/* ---------- ナビ（下線のタブ） ---------- */
 
+/* 並びと位置はそのままに、面の中のボタンをやめて文字と下線で選択中を示す */
 .nav {
-  display: flex; gap: 2px; flex-wrap: wrap;
-  background: var(--surface-2); border-radius: var(--radius);
-  padding: 4px; margin: 20px 0 16px;
+  display: flex; gap: 2px 22px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  margin: 20px 0 16px;
 }
 .nav a {
-  padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  padding: 10px 0; font-size: 13px; font-weight: 500;
   color: var(--text-sub); white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
+  /* 選択中の下線を、ナビの下線にちょうど重ねる */
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
 }
 .nav a:hover { color: var(--text); }
-.nav a.active { background: var(--surface); color: var(--text); box-shadow: var(--edge), var(--shadow); }
+.nav a.active { color: var(--text); border-bottom-color: var(--text); }
 
 /* ---------- フィルタ ---------- */
 
@@ -239,13 +233,10 @@ a { color: inherit; text-decoration: none; }
 
 .metrics {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
-  gap: 10px; margin-bottom: 28px;
+  gap: 18px 28px; margin-bottom: 28px;
+  padding-bottom: 22px; border-bottom: 1px solid var(--border);
 }
-.metric {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 14px 16px 16px;
-  box-shadow: var(--edge), var(--shadow);
-}
+.metric { min-width: 0; }
 .metric-label {
   font-size: var(--fs-xs); color: var(--text-mute); font-weight: 600; letter-spacing: 0.08em;
 }
@@ -259,20 +250,21 @@ a { color: inherit; text-decoration: none; }
 
 h2 {
   font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.015em;
-  margin: 32px 0 12px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin: 32px 0 14px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
 }
 /* 見出しの横の補足は、本文より一段控えめにして見出しを立てる */
 h2 > .card-meta { font-size: var(--fs-sm); font-weight: 500; letter-spacing: 0.01em; }
 
-.table-wrap {
-  --wrap-radius: var(--radius-lg);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--wrap-radius); box-shadow: var(--edge), var(--shadow); overflow-x: auto;
-}
+.table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 12px 16px; }
+/* 外枠が無いので、左右の端は見出しや本文と揃える */
+th:first-child, td:first-child { padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
 thead th {
-  background: var(--surface);
+  /* 固定した見出しが下の行を隠せるよう、地の色で塗る */
+  background: var(--bg);
   font-size: var(--fs-xs); color: var(--text-mute); font-weight: 600;
   letter-spacing: 0.08em; white-space: nowrap;
   /* 下線は影で描く。border-collapse の表では、固定した見出しのセルに
@@ -289,11 +281,6 @@ tbody tr {
 /* 横幅に収まる表だけ、見出しをヘッダの直下に固定する（判定は base.html） */
 .table-wrap.fits { overflow: visible; }
 .table-wrap.fits thead th { position: sticky; top: var(--header-h, 0px); z-index: 5; }
-/* 箱のはみ出し制御を外したぶん、角を見出しと最終行で丸めておく */
-.table-wrap.fits thead th:first-child { border-top-left-radius: var(--wrap-radius); }
-.table-wrap.fits thead th:last-child { border-top-right-radius: var(--wrap-radius); }
-.table-wrap.fits tbody tr:last-child td:first-child { border-bottom-left-radius: var(--wrap-radius); }
-.table-wrap.fits tbody tr:last-child td:last-child { border-bottom-right-radius: var(--wrap-radius); }
 tbody tr:first-child { border-top: none; }
 tbody tr:hover { background: var(--surface-hover); }
 td.num, th.num { text-align: right; white-space: nowrap; }
@@ -313,11 +300,11 @@ tr.unreliable .rate { color: var(--text-mute); }
 /* 勝率は数値の下に細いバーを添え、一覧での比較を速くする。 */
 .rate { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.02em; }
 .rate-bar {
-  height: 5px; border-radius: 999px; background: var(--surface-2);
+  height: 5px; border-radius: 1px; background: var(--surface-2);
   margin: 6px 0 0 auto; width: 64px; overflow: hidden;
 }
 .rate-bar span {
-  display: block; height: 100%; border-radius: 999px;
+  display: block; height: 100%; border-radius: 1px;
   background: var(--bar); width: var(--v, 0%);
 }
 .ci { font-size: 11px; color: var(--text-mute); }
@@ -331,13 +318,13 @@ tr.unreliable .rate { color: var(--text-mute); }
 
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 10px; font-weight: 600; padding: 2px 8px 2px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 600; padding: 2px 7px 2px 6px; border-radius: var(--radius-sm);
   background: var(--surface-2); color: var(--text-sub);
   margin-left: 6px; white-space: nowrap; vertical-align: 1px; line-height: 1.5;
 }
-/* 先頭の小さな点。文字と同じ色を薄く使い、新しい色は足さない */
+/* 先頭の小さな四角。文字と同じ色を薄く使い、新しい色は足さない */
 .badge::before {
-  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  content: ""; width: 5px; height: 5px;
   background: currentColor; opacity: 0.55; flex-shrink: 0;
 }
 
@@ -354,11 +341,12 @@ tr.unreliable .rate { color: var(--text-mute); }
 
 .match-row {
   display: grid; grid-template-columns: 96px 66px 1fr; gap: 14px;
-  align-items: center; padding: 12px 16px;
+  align-items: center; padding: 12px 0;
   border-top: 1px solid var(--border); transition: background 0.12s;
 }
 .match-row:first-child { border-top: none; }
-.match-row:hover { background: var(--surface-hover); }
+/* 見出しの下線のすぐ下に、行の区切り線を重ねない */
+h2 + .match-row { border-top: none; }
 .result-win, .result-loss, .result-draw {
   font-weight: 650; font-size: 13px;
   padding: 2px 9px; border-radius: var(--radius-sm); display: inline-block;
@@ -370,20 +358,14 @@ tr.unreliable .rate { color: var(--text-mute); }
 
 /* ---------- 注記・グラフ ---------- */
 
+/* 注記は面で囲わず、左端の細い縦線で本文と区別する */
 .note {
-  font-size: 12px; color: var(--text-sub); background: var(--surface-2);
-  border-radius: var(--radius); padding: 12px 16px; margin-top: 16px; line-height: 1.75;
+  font-size: 12px; color: var(--text-sub);
+  border-left: 2px solid var(--border-strong);
+  padding: 2px 0 2px 14px; margin-top: 16px; line-height: 1.75;
 }
-.chart-box {
-  position: relative; height: 250px; margin-bottom: 26px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 14px 16px 10px; box-shadow: var(--edge), var(--shadow);
-}
-.empty {
-  color: var(--text-mute); padding: 40px 0; text-align: center; font-size: 13px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
+.chart-box { position: relative; height: 250px; margin-bottom: 26px; }
+.empty { color: var(--text-mute); padding: 40px 0; text-align: center; font-size: 13px; }
 
 .seg-link {
   font-size: 12px; font-weight: 500; color: var(--text-mute);
@@ -402,9 +384,9 @@ body.hide-unreliable tr.unreliable { display: none; }
   .header-inner { padding: 10px 12px; gap: 8px; }
   .player-name { font-size: 15px; }
 
-  .nav { margin: 14px 0 12px; padding: 4px; gap: 2px; }
-  .nav a { padding: 9px 12px; font-size: 13px; }
-  .nav a:active { background: var(--surface-hover); }
+  .nav { margin: 14px 0 12px; gap: 2px 18px; }
+  .nav a { padding: 10px 0; font-size: 13px; }
+  .nav a:active { color: var(--text); }
 
   .filters { gap: 7px; margin-bottom: 16px; }
   /* 指で押す前提なので、高さは40px以上を確保する */
@@ -414,12 +396,11 @@ body.hide-unreliable tr.unreliable { display: none; }
 
   /* 412〜440pxの端末では3つ横に並ぶ。狭い端末では自動的に2列へ折り返す */
   /* 375〜440pxのいずれでも3つ横に並ぶ幅にする */
-  .metrics { grid-template-columns: repeat(auto-fit, minmax(101px, 1fr)); gap: 7px; margin-bottom: 20px; }
-  .metric { padding: 11px 13px 13px; border-radius: var(--radius); }
+  .metrics { grid-template-columns: repeat(auto-fit, minmax(101px, 1fr)); gap: 14px 18px;
+             margin-bottom: 20px; padding-bottom: 18px; }
   .metric-value { font-size: 22px; }
 
   h2 { font-size: 14px; margin: 22px 0 10px; }
-  .table-wrap { --wrap-radius: var(--radius); }
   th, td { padding: 10px 8px; }
   thead th { font-size: 10px; }
   .card-img { width: 34px; height: 41px; }
@@ -440,7 +421,7 @@ body.hide-unreliable tr.unreliable { display: none; }
      勝敗と点数を1行目に置き、デッキは次の行へ回して各デッキを1段に収める。 */
   .match-row {
     display: flex; flex-wrap: wrap; align-items: center;
-    gap: 6px 14px; padding: 11px 10px;
+    gap: 6px 14px; padding: 11px 0;
   }
   .match-row > :nth-child(1),
   .match-row > :nth-child(2) { flex: 0 0 auto; }
@@ -452,14 +433,14 @@ body.hide-unreliable tr.unreliable { display: none; }
      6〜7割しか使えず、カードの絵柄が見分けづらくなるため。 */
   .match-row .deck { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
   .match-row .deck img { width: 100%; height: auto; }
-  .chart-box { height: 210px; padding: 10px 10px 6px; }
+  .chart-box { height: 210px; }
 }
 
 /* ---------- スマートフォンでの詰め ---------- */
 
 @media (max-width: 640px) {
   /* ヘッダは常時表示されるため、占有する高さを抑える */
-  .status { font-size: 11px; padding: 5px 10px; }
+  .status { font-size: 11px; }
   .status-msg { display: none; }
   /* 押しやすさを優先し、小さくしすぎない */
   .theme-toggle { width: 36px; height: 36px; font-size: 15px; }
@@ -511,13 +492,11 @@ body.hide-unreliable tr.unreliable { display: none; }
 /* トロフィーを主役に、成績3つを従にする。左右で役割を分ける。 */
 .summary-top {
   display: grid; grid-template-columns: minmax(200px, 1fr) 2fr;
-  gap: 10px; margin-bottom: 28px;
+  gap: 18px 28px; margin-bottom: 28px;
+  padding-bottom: 22px; border-bottom: 1px solid var(--border);
 }
-.metric-hero {
-  display: flex; flex-direction: column; justify-content: center;
-  background: var(--accent-soft); border-color: transparent;
-  box-shadow: var(--edge), var(--shadow-raised);
-}
+/* 主役は面ではなく、数字の大きさとアクセント色で示す */
+.metric-hero { display: flex; flex-direction: column; justify-content: center; }
 .metric-hero .metric-label { color: var(--accent); }
 .hero-value {
   font-size: 52px; font-weight: 800; line-height: 1.05;
@@ -527,21 +506,22 @@ body.hide-unreliable tr.unreliable { display: none; }
 }
 .metric-group {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 12px; align-items: start;
+  gap: 18px 28px; align-items: start;
 }
 .group-item { min-width: 0; }
 
 @media (max-width: 640px) {
-  .summary-top { grid-template-columns: 1fr; gap: 8px; margin-bottom: 20px; }
-  .metric-hero { padding: 12px 14px; }
+  .summary-top { grid-template-columns: 1fr; gap: 14px; margin-bottom: 20px; padding-bottom: 18px; }
   .hero-value { font-size: 40px; }
-  .metric-group { gap: 8px; }
+  .metric-group { gap: 14px 18px; }
 }
 
 /* ---------- 対戦の詳細 ---------- */
 
 .match-link { text-decoration: none; color: inherit; cursor: pointer; }
-.match-link:hover { background: var(--surface-hover); }
+/* 行の面で押せることを示さない代わりに、マウスを乗せたら勝敗ラベルに下線を引く */
+.match-link:hover .result-win, .match-link:hover .result-loss,
+.match-link:hover .result-draw { text-decoration: underline; }
 .match-link:active { background: var(--surface-2); }
 
 .back-link {
@@ -550,11 +530,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 }
 .back-link:hover { color: var(--text); }
 
-.match-hero {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); box-shadow: var(--edge), var(--shadow-raised);
-  padding: 16px 18px; margin-bottom: 14px;
-}
+.match-hero { padding: 4px 0 16px; margin-bottom: 14px; }
 .match-hero-main { display: flex; align-items: center; gap: 14px; }
 .match-score {
   font-size: 32px; font-weight: 800; letter-spacing: -0.04em;
@@ -568,9 +544,6 @@ body.hide-unreliable tr.unreliable { display: none; }
 /* デッキ8枚を、レベルを添えて並べる */
 .card-grid {
   display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); box-shadow: var(--edge), var(--shadow);
-  padding: 14px 16px;
 }
 .card-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
 .card-img-lg {
@@ -595,7 +568,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 @media (max-width: 640px) {
   .match-score { font-size: 26px; }
   /* 8枚を横1列に保つと1枚が小さくなりすぎるため、2段に分ける */
-  .card-grid { grid-template-columns: repeat(4, 1fr); gap: 10px 8px; padding: 12px; }
+  .card-grid { grid-template-columns: repeat(4, 1fr); gap: 10px 8px; }
   .card-cell-name { font-size: 10px; }
 }
 
@@ -603,8 +576,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px; color: var(--text-sub);
-  background: var(--surface-2); border-radius: var(--radius);
-  padding: 10px 14px; margin: 12px 0; text-align: center;
+  margin: 12px 0; text-align: left;
   overflow-x: auto; white-space: nowrap;
 }
 
@@ -614,12 +586,8 @@ body.hide-unreliable tr.unreliable { display: none; }
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px;
+  padding: 4px 0 16px;
   margin-bottom: 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--edge), var(--shadow-raised);
 }
 
 .card-hero-img {
@@ -684,20 +652,19 @@ body.hide-unreliable tr.unreliable { display: none; }
 
 .source-note {
   margin-top: 16px;
-  padding: 12px 14px;
+  padding: 2px 0 2px 14px;
+  border-left: 2px solid var(--border-strong);
   font-size: 11px;
   line-height: 1.7;
   color: var(--text-mute);
-  background: var(--surface-2);
-  border-radius: var(--radius);
 }
 
 .source-note a { color: var(--text-sub); }
 
 /* 段階別の値（35-120-422）や回数付きの値（122×3（366））。数字が並ぶぶん桁が伸びる。
-   折り返すと読みにくいので1行に保ち、そのかわり箱を2マス分の幅にする。
-   それでも狭い画面では、箱の幅に合わせて文字の大きさを自動で下げる
-   （cqi は箱の幅に対する割合。対応しない古いブラウザでは直前の 21px が使われる）。 */
+   折り返すと読みにくいので1行に保ち、そのかわり2マス分の幅を使う。
+   それでも狭い画面では、使える幅に合わせて文字の大きさを自動で下げる
+   （cqi はその幅に対する割合。対応しない古いブラウザでは直前の 21px が使われる）。 */
 .metric:has(> .metric-value.staged) { grid-column: span 2; }
 .metric { container-type: inline-size; }
 .metric-value.staged {
@@ -744,13 +711,8 @@ body.hide-unreliable tr.unreliable { display: none; }
 
 .spell-summary {
   margin-bottom: 12px;
-  padding: 12px 14px;
   font-size: 13px;
   line-height: 1.7;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--edge), var(--shadow);
 }
 
 .spell-summary .sp-sub { font-size: 12px; color: var(--text-mute); }
