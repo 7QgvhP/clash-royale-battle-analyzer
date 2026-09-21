@@ -120,6 +120,18 @@ STAGE_LABELS = {
     "Void": {"1": "1体に命中", "3": "2〜4体に命中", "5": "5体以上に命中"},
 }
 
+# 複数回当たる呪文で、ヒット数を掛けるべき値。wiki の dmg は1ヒットあたりの値で、
+# wiki 自身の表は「122 x3 (366)」と合計を併記している。どれが呪文の攻撃で、どれが
+# 呪文から出てくるユニットの攻撃かはカードごとに違うため、既定から外れるものだけ書く。
+# 既定は「本体のダメージとタワーへのダメージ（段階別を含む）」。
+HIT_KEYS = {
+    # 本体の dmg は出てくるゴブリンの攻撃で、呪いのダメージは curse 側にある
+    "Goblin Curse": {None: {"crown_dmg"}, "curse": {"dmg"}},
+    # 建物へのダメージも同じ回数だけ当たる
+    "Earthquake": {None: {"dmg", "crown_dmg"}, "build": {"dmg"}},
+}
+DEFAULT_HIT_BASES = {"dmg", "crown_dmg"}
+
 # カードが出す別ユニットの表示名。ここに無いものは元の綴りのまま出す。
 UNIT_LABELS = {
     "golem": "ゴーレム本体", "mite": "ゴーレマイト", "skel": "スケルトン",
@@ -266,13 +278,38 @@ def _groups(keys, card_name_en=None):
     return out
 
 
+def hit_bases(card_name_en, prefix):
+    """そのユニットで、ヒット数を掛けるべき値の種類を返す。"""
+    table = HIT_KEYS.get(card_name_en or "")
+    if table is not None:
+        return table.get(prefix, set())
+    return DEFAULT_HIT_BASES if prefix is None else set()
+
+
+def with_hits(value, hits):
+    """1ヒットの値に回数と合計を添える。wiki と同じ「122×3（366）」の形。"""
+    if value is None or not hits or hits <= 1:
+        return value
+    return f"{value}×{hits}（{value * hits}）"
+
+
 def _joined(values):
     """段階別の値をゲーム内と同じ並びにする。"""
     return STAGE_JOIN.join("--" if v is None else str(v) for v in values)
 
 
-def unit_rows(unit, level, card_name_en=None):
-    """1ユニット分の、指定レベルでの数値を並べる。"""
+def _value(unit, key, level, hits):
+    """1項目の値。複数回当たるものは回数と合計を添える。"""
+    count, bases = hits or (0, set())
+    value = scale(unit[key], level)
+    return with_hits(value, count) if base_stat(key) in bases else value
+
+
+def unit_rows(unit, level, card_name_en=None, hits=None):
+    """1ユニット分の、指定レベルでの数値を並べる。
+
+    hits は（ヒット数, 掛ける対象の種類）。複数回当たる呪文のときだけ渡す。
+    """
     rows = []
     for base, keys in _groups(scaled_keys(unit), card_name_en):
         if len(keys) > 1:
@@ -280,7 +317,7 @@ def unit_rows(unit, level, card_name_en=None):
                          "value": _joined([scale(unit[k], level) for k in keys])})
         else:
             rows.append({"label": stat_label(keys[0], card_name_en),
-                         "value": scale(unit[keys[0]], level)})
+                         "value": _value(unit, keys[0], level, hits)})
 
     pairs = dps_pairs(unit)
     if progressive(card_name_en) and len(pairs) > 1:
@@ -310,7 +347,7 @@ def fixed_rows(unit, card_name_en=None):
     return rows
 
 
-def level_table(unit, levels, card_name_en=None):
+def level_table(unit, levels, card_name_en=None, hits=None):
     """ユニットのレベル別の数値表を組み立てる。
 
     列はそのユニットが実際に持っている項目だけにする。全カード共通の列を
@@ -334,7 +371,7 @@ def level_table(unit, levels, card_name_en=None):
         # キー名を values にすると、テンプレート側で辞書の values() が
         # 優先されてしまうため cells とする
         cells = [_joined([scale(unit[k], level) for k in keys]) if len(keys) > 1
-                 else scale(unit[keys[0]], level)
+                 else _value(unit, keys[0], level, hits)
                  for _, keys in groups]
         dps_values = [_dps(scale(unit[d], level), unit[sp]) for d, sp in pairs]
         cells += [_joined(dps_values)] if join_dps else dps_values
@@ -385,11 +422,13 @@ def card_detail(conn, card_id, level=BASE_LEVEL):
     units = []
     if stats:
         for unit in stats.get("units", []):
+            count = int((stats.get("extras") or {}).get("dmg_hits") or 0)
+            hits = (count, hit_bases(card["name_en"], unit.get("prefix"))) if count > 1 else None
             units.append({
                 "name": unit_name(unit.get("prefix")),
-                "rows": unit_rows(unit, shown, card["name_en"]),
+                "rows": unit_rows(unit, shown, card["name_en"], hits),
                 "fixed": fixed_rows(unit, card["name_en"]),
-                "table": level_table(unit, levels, card["name_en"]),
+                "table": level_table(unit, levels, card["name_en"], hits),
             })
 
     return {
