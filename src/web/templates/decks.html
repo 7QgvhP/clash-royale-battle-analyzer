@@ -27,6 +27,31 @@
           <strong style="font-weight:500">{{ row.label }}</strong>
           {% if not row.reliable %}<span class="badge">参考値</span>{% endif %}
         </div>
+        {# 入れ替え前後で成績が違うことがあるため、構成が複数あれば内訳を出す #}
+        {% if row.variants | length > 1 %}
+        <details class="variants" open>
+          <summary>構成の内訳（{{ row.variants | length }}種）</summary>
+          <ul>
+            {% for v in row.variants %}
+            <li class="{% if v.is_current %}current{% endif %}">
+              <div class="variant-head">
+                {% if v.is_current %}<span class="badge current-badge">表示中</span>{% endif %}
+                <span class="variant-stat">{{ v.total }}戦・勝率 {{ v.rate | pct }}</span>
+                <span class="card-meta">{{ v.first_seen | jst_date }}〜{{ v.last_seen | jst_date }}</span>
+              </div>
+              {% if v.added %}
+              <div class="variant-diff">
+                <span class="diff-out" title="表示中の構成から抜けたカード">−</span>
+                {% for c in v.removed %}{{ m.card_img(c, 'card-img-sm') }}{% endfor %}
+                <span class="diff-in" title="代わりに入っていたカード">＋</span>
+                {% for c in v.added %}{{ m.card_img(c, 'card-img-sm') }}{% endfor %}
+              </div>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endif %}
       </td>
       <td class="num">{{ row.total }}</td>
       <td class="num">{{ m.rate_cell(row) }}</td>
@@ -44,6 +69,9 @@
 <div class="note">
   8枚中{{ config_threshold if config_threshold else 6 }}枚以上が一致するデッキは同一グループとして集計している。
   カードを1〜2枚入れ替えても履歴が分断されない。<br>
+  表示している8枚は、そのグループで<strong style="font-weight:600">最後に使った構成</strong>。
+  グループの成績はすべての構成の合算なので、入れ替えの前後で成績を比べたいときは
+  「構成の内訳」を見る。内訳の「−」は表示中の構成から抜けたカード、「＋」は代わりに入っていたカード。<br>
   デッキの呼び名は、コストの高いカード3枚から自動で付けている。
 </div>
 

@@ -62,6 +62,15 @@ def to_jst(value):
     return (dt + timedelta(hours=9)).strftime("%m/%d %H:%M")
 
 
+@app.template_filter("jst_date")
+def to_jst_date(value):
+    """UTCの日時文字列をJSTの日付だけにする。期間の表示で時刻まで出すと長くなるため。"""
+    dt = parse_battle_time(value)
+    if dt is None:
+        return value or ""
+    return (dt + timedelta(hours=9)).strftime("%m/%d")
+
+
 @app.template_filter("pct")
 def to_percent(value, digits=1):
     """0〜1の割合をパーセント表記にする。"""

@@ -720,3 +720,44 @@ body.hide-unreliable tr.unreliable { display: none; }
   .sp-unit { gap: 6px; }
   .spell-table td.num b { font-size: 14px; }
 }
+
+/* ---- 自デッキ: 構成の内訳 ---- */
+
+.variants {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.variants summary {
+  cursor: pointer;
+  color: var(--text-sub);
+}
+
+.variants ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.variants li {
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* いま画面に出している構成 */
+.variants li.current { background: var(--accent-soft); border-radius: 8px; }
+
+.variant-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.variant-stat { font-weight: 500; color: var(--text); }
+.current-badge { background: var(--accent); color: #fff; }
+
+.variant-diff { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 4px; }
+.diff-out, .diff-in { font-weight: 700; font-size: 14px; margin: 0 2px 0 6px; }
+.diff-out { color: var(--neg); margin-left: 0; }
+.diff-in { color: var(--pos); }
+.card-img-sm { width: 26px; height: auto; vertical-align: middle; }
+
+/* 内訳は狭い画面でも読めるよう、表の補足を隠す既定から外す */
+@media (max-width: 640px) {
+  .variants .card-meta { display: inline; }
+}
