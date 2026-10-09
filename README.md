@@ -2,7 +2,7 @@
 
 クラッシュロワイヤルの対戦履歴を自動で蓄積し、勝率・苦手カード・デッキ相性を分析するローカルツール。
 
-- **バージョン**: v1.14.1
+- **バージョン**: v1.14.2
 - **現在の状況**: 実装済み・稼働確認済み
 - **要件定義書**: [docs/requirements.md](docs/requirements.md)
 
@@ -77,11 +77,13 @@ python -m src.collector.collect --init
 ### 6. 定期収集を登録する
 
 ```bash
-powershell -ExecutionPolicy Bypass -File scripts/register_task.ps1
+powershell -ExecutionPolicy Bypass -File scripts/register_task.ps1 -DailyAt 23:00
 ```
 
-Windowsタスクスケジューラに1時間おきの収集タスクを登録する。
-間隔を変えたい場合は `-IntervalMinutes 30` のように指定する。
+Windowsタスクスケジューラに、毎日23時に1回収集するタスクを登録する。
+1日1回の収集では、その日に30戦以上プレイすると取りこぼすため、対戦数が多い場合は
+`-DailyAt` を外して間隔指定で登録する（既定は60分おき。`-IntervalMinutes 30` のように変更できる）。
+公開サイトを使う場合は、`-Publish -DailyAt 23:00` で登録し直す（後述の「運用形態」を参照）。
 
 ### 7. ダッシュボードを開く
 
@@ -288,7 +290,7 @@ python -m src.collector.collect --remove-player "#ABC12345"
 蓄積済みの対戦は削除されない。再度 `--add-player` すれば続きから収集を再開できる。
 
 **注意:** 登録人数を増やすと収集のAPIリクエストが人数分になる。数人であれば
-1時間おきの収集でも制限に余裕があるが、大人数を追跡する場合は間隔の見直しが必要になる。
+収集間隔を短くしても制限に余裕があるが、大人数を追跡する場合は間隔の見直しが必要になる。
 
 ### スマートフォンから見る（PCの状態に依存しない）
 
