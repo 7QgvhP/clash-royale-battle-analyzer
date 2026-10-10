@@ -2,6 +2,6 @@
 # 差分が全行になり、変更箇所が追えなくなるため。
 * text=auto eol=lf
 
-# PowerShellスクリプトはCRLF。日本語を含むため、BOM付きUTF-8と
-# あわせてWindows側の期待に合わせる必要がある。
-*.ps1 text eol=crlf
+# バッチファイルはCRLF（共通ルール: 改行はLF、.bat / .cmd のみCRLF）
+*.bat text eol=crlf
+*.cmd text eol=crlf
