@@ -125,8 +125,9 @@ def download_images(conn, client, force=False):
     CARD_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     saved = 0
     for card in repo.all_cards(conn):
-        icon_path = evo_path = None
-        for url, suffix in ((card["icon_url"], ""), (card["evo_icon_url"], "_evo")):
+        paths = {"": None, "_evo": None, "_hero": None}
+        for url, suffix in ((card["icon_url"], ""), (card["evo_icon_url"], "_evo"),
+                            (card["hero_icon_url"], "_hero")):
             if not url:
                 continue
             filename = f"{card['card_id']}{suffix}.png"
@@ -138,11 +139,8 @@ def download_images(conn, client, force=False):
                 except Exception as e:
                     logging.warning("画像の取得に失敗しました: %s (%s)", card["name_en"], e)
                     continue
-            if suffix:
-                evo_path = filename
-            else:
-                icon_path = filename
-        repo.set_icon_paths(conn, card["card_id"], icon_path, evo_path)
+            paths[suffix] = filename
+        repo.set_icon_paths(conn, card["card_id"], paths[""], paths["_evo"], paths["_hero"])
     conn.commit()
     logging.info("カード画像を保存しました: 新規 %d件（保存先 %s）", saved, CARD_IMAGE_DIR)
 
@@ -162,8 +160,8 @@ def optimize_images(conn, force=False):
     CARD_WEB_DIR.mkdir(parents=True, exist_ok=True)
     converted = 0
     for card in repo.all_cards(conn):
-        icon_path = evo_path = None
-        for suffix in ("", "_evo"):
+        paths = {"": None, "_evo": None, "_hero": None}
+        for suffix in paths:
             src = CARD_IMAGE_DIR / f"{card['card_id']}{suffix}.png"
             if not src.exists():
                 continue
@@ -178,11 +176,8 @@ def optimize_images(conn, force=False):
                 except Exception as e:
                     logging.warning("画像の変換に失敗しました: %s (%s)", src.name, e)
                     continue
-            if suffix:
-                evo_path = name
-            else:
-                icon_path = name
-        repo.set_icon_paths(conn, card["card_id"], icon_path, evo_path)
+            paths[suffix] = name
+        repo.set_icon_paths(conn, card["card_id"], paths[""], paths["_evo"], paths["_hero"])
     conn.commit()
 
     total = sum(f.stat().st_size for f in CARD_WEB_DIR.glob("*.webp"))

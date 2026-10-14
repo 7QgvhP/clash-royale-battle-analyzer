@@ -134,8 +134,8 @@ def upsert_cards(conn, items, support_items, name_map):
             icons = c.get("iconUrls") or {}
             conn.execute(
                 "INSERT INTO cards (card_id, name_en, name_ja, rarity, max_level,"
-                " elixir_cost, is_support, icon_url, evo_icon_url)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                " elixir_cost, is_support, icon_url, evo_icon_url, hero_icon_url)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 " ON CONFLICT(card_id) DO UPDATE SET"
                 "   name_en = excluded.name_en,"
                 "   name_ja = excluded.name_ja,"
@@ -144,10 +144,12 @@ def upsert_cards(conn, items, support_items, name_map):
                 "   elixir_cost = excluded.elixir_cost,"
                 "   is_support = excluded.is_support,"
                 "   icon_url = excluded.icon_url,"
-                "   evo_icon_url = excluded.evo_icon_url",
+                "   evo_icon_url = excluded.evo_icon_url,"
+                "   hero_icon_url = excluded.hero_icon_url",
                 (c["id"], c["name"], name_ja, c.get("rarity"), c.get("maxLevel"),
                  c.get("elixirCost"), is_support,
-                 icons.get("medium"), icons.get("evolutionMedium")))
+                 icons.get("medium"), icons.get("evolutionMedium"),
+                 icons.get("heroMedium")))
     conn.commit()
     return unknown
 
@@ -202,9 +204,10 @@ def card_stats_count(conn):
     return conn.execute("SELECT COUNT(*) AS c FROM card_stats").fetchone()["c"]
 
 
-def set_icon_paths(conn, card_id, icon_path, evo_icon_path):
-    conn.execute("UPDATE cards SET icon_path = ?, evo_icon_path = ? WHERE card_id = ?",
-                 (icon_path, evo_icon_path, card_id))
+def set_icon_paths(conn, card_id, icon_path, evo_icon_path, hero_icon_path=None):
+    conn.execute("UPDATE cards SET icon_path = ?, evo_icon_path = ?, hero_icon_path = ?"
+                 " WHERE card_id = ?",
+                 (icon_path, evo_icon_path, hero_icon_path, card_id))
 
 
 # --- 対戦 -----------------------------------------------------------------

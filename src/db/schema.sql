@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS cards (
     icon_url      TEXT,
     evo_icon_url  TEXT,
     icon_path     TEXT,
-    evo_icon_path TEXT
+    evo_icon_path TEXT,
+    hero_icon_url  TEXT,
+    hero_icon_path TEXT
 );
 
 -- カードの性能値（HP・ダメージ・射程など）

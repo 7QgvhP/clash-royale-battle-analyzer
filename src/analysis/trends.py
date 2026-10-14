@@ -59,7 +59,7 @@ def recent_matches(conn, filters, limit=50, offset=0):
         LIMIT ? OFFSET ?
     """, params + [limit, offset]).fetchall()
 
-    from src.analysis.decks import representative_cards
+    from src.analysis.decks import match_evolutions, representative_cards
 
     matches = []
     for r in rows:
@@ -74,8 +74,10 @@ def recent_matches(conn, filters, limit=50, offset=0):
             "trophy_change": r["trophy_change"],
             "opponent_name": r["opponent_name"],
             "level_diff": r["level_diff"],
-            "my_cards": representative_cards(conn, r["my_deck_hash"]),
-            "opp_cards": representative_cards(conn, r["opp_deck_hash"]),
+            "my_cards": representative_cards(
+                conn, r["my_deck_hash"], match_evolutions(conn, r["id"], "me")),
+            "opp_cards": representative_cards(
+                conn, r["opp_deck_hash"], match_evolutions(conn, r["id"], "opponent")),
         })
     return matches
 

@@ -105,6 +105,7 @@
     <div class="card-cell-level">
       Lv{{ c.level if c.level is not none else "?" }}
       {% if c.evolved %}<span class="badge">進化</span>{% endif %}
+      {% if c.hero %}<span class="badge">ヒーロー</span>{% endif %}
     </div>
   </div>
   {% endfor %}

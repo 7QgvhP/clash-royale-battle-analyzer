@@ -7,7 +7,7 @@
 import logging
 
 # 現在のスキーマ版。schema.sql を変更したら上げる。
-CURRENT_VERSION = 3
+CURRENT_VERSION = 4
 
 
 def get_version(conn):
@@ -24,6 +24,8 @@ def get_version(conn):
     # 版が未記録の場合は、実際の列の有無で判断する。テーブルの存在では
     # 判定しない。移行が途中で失敗すると一部のテーブルだけが作られ、
     # 未完了の状態を「移行済み」と誤認するため。
+    if _has_column(conn, "cards", "hero_icon_path"):
+        return 4
     if _table_exists(conn, "card_stats"):
         return 3
     return 2 if _has_column(conn, "decks", "player_tag") else 1
@@ -143,9 +145,23 @@ def migrate_2_to_3(conn):
     logging.info("マイグレーション完了: card_stats を作成しました")
 
 
+def migrate_3_to_4(conn):
+    """ヒーロー版のカード画像の保存先を追加する。
+
+    既存データには触れない。画像そのものは、次回の収集（カードマスタの更新と
+    画像の取得）で保存される。
+    """
+    for column in ("hero_icon_url", "hero_icon_path"):
+        if not _has_column(conn, "cards", column):
+            conn.execute(f"ALTER TABLE cards ADD COLUMN {column} TEXT")
+    conn.commit()
+    logging.info("マイグレーション完了: cards にヒーロー画像の列を追加しました")
+
+
 MIGRATIONS = {
     2: migrate_1_to_2,
     3: migrate_2_to_3,
+    4: migrate_3_to_4,
 }
 
 

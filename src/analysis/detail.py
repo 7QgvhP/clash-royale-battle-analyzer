@@ -6,6 +6,8 @@
 """
 import json
 
+from src.analysis.decks import card_icon
+
 # プリンセスタワーは左右に1本ずつある。APIは生き残った塔のHPだけを返すため、
 # 返ってきた個数から破壊された本数を逆算する。
 PRINCESS_TOWER_COUNT = 2
@@ -31,7 +33,7 @@ def _side_cards(conn, match_id, side):
     rows = conn.execute("""
         SELECT mc.card_id, mc.level, mc.normalized_level, mc.evolution_level,
                mc.is_support, c.name_en, c.name_ja, c.rarity, c.elixir_cost,
-               c.icon_path, c.evo_icon_path
+               c.icon_path, c.evo_icon_path, c.hero_icon_path
         FROM match_cards mc
         JOIN cards c ON c.card_id = mc.card_id
         WHERE mc.match_id = ? AND mc.side = ?
@@ -39,7 +41,8 @@ def _side_cards(conn, match_id, side):
 
     cards, supports = [], []
     for r in rows:
-        evolved = (r["evolution_level"] or 0) > 0
+        evolved = (r["evolution_level"] or 0) == 1
+        hero = (r["evolution_level"] or 0) >= 2
         item = {
             "card_id": r["card_id"],
             "name": r["name_ja"] or r["name_en"],
@@ -49,9 +52,9 @@ def _side_cards(conn, match_id, side):
             "level": r["normalized_level"],
             "raw_level": r["level"],
             "evolved": evolved,
-            # 進化を装備している場合は進化版の絵柄で見せる
-            "icon_path": (r["evo_icon_path"] if evolved and r["evo_icon_path"]
-                          else r["icon_path"]),
+            "hero": hero,
+            # 進化・ヒーローを装備している場合は、それぞれの絵柄で見せる
+            "icon_path": card_icon(r, r["evolution_level"]),
         }
         (supports if r["is_support"] else cards).append(item)
 

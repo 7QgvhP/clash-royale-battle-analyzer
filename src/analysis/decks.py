@@ -76,14 +76,60 @@ def regroup_decks(conn, threshold, player_tag=None):
     return total_groups
 
 
-def representative_cards(conn, deck_hash_value):
-    """デッキハッシュから、表示用のカード情報を並べて返す。"""
+def card_icon(row, evolution_level):
+    """装備の状態に合わせたカード画像のパスを返す。
+
+    対戦中の evolutionLevel が 1 なら進化、2 以上ならヒーローとみなす。
+    該当する画像が無いときは通常の画像を使う（表示が欠けないようにするため）。
+    """
+    level = evolution_level or 0
+    if level >= 2 and row["hero_icon_path"]:
+        return row["hero_icon_path"]
+    if level == 1 and row["evo_icon_path"]:
+        return row["evo_icon_path"]
+    return row["icon_path"]
+
+
+def match_evolutions(conn, match_id, side):
+    """対戦の片側で、進化・ヒーローを装備していたカードを返す。{card_id: evolution_level}"""
+    rows = conn.execute(
+        "SELECT card_id, evolution_level FROM match_cards"
+        " WHERE match_id = ? AND side = ? AND evolution_level > 0",
+        (match_id, side)).fetchall()
+    return {r["card_id"]: r["evolution_level"] for r in rows}
+
+
+def latest_deck_evolutions(conn, deck_hash_value, player_tag=None):
+    """その構成を最後に使った対戦での、進化・ヒーローの装備を返す。
+
+    デッキはカード8枚の組み合わせだけで区別しており、装備の違いは区別しない。
+    「いま使っているデッキ」を見せる方針に合わせ、最後の対戦の状態で表示する。
+    """
+    if not deck_hash_value:
+        return {}
+    where, params = "m.my_deck_hash = ?", [deck_hash_value]
+    if player_tag:
+        where += " AND m.player_tag = ?"
+        params.append(player_tag)
+    row = conn.execute(
+        f"SELECT m.id FROM matches m WHERE {where}"
+        " ORDER BY m.battle_time DESC LIMIT 1", params).fetchone()
+    return match_evolutions(conn, row["id"], "me") if row else {}
+
+
+def representative_cards(conn, deck_hash_value, evolutions=None):
+    """デッキハッシュから、表示用のカード情報を並べて返す。
+
+    evolutions（{card_id: evolution_level}）を渡すと、進化・ヒーローを
+    装備していたカードを、対応する画像で見せる。
+    """
     if not deck_hash_value:
         return []
+    evolutions = evolutions or {}
     ids = [int(i) for i in deck_hash_value.split("-") if i]
     placeholders = ", ".join("?" for _ in ids)
     rows = conn.execute(
-        f"SELECT card_id, name_en, name_ja, elixir_cost, icon_path"
+        f"SELECT card_id, name_en, name_ja, elixir_cost, icon_path, evo_icon_path, hero_icon_path"
         f" FROM cards WHERE card_id IN ({placeholders})", ids).fetchall()
     by_id = {r["card_id"]: r for r in rows}
 
@@ -93,7 +139,7 @@ def representative_cards(conn, deck_hash_value):
         cards.append({
             "card_id": i,
             "name": (row["name_ja"] or row["name_en"]) if row else str(i),
-            "icon_path": row["icon_path"] if row else None,
+            "icon_path": card_icon(row, evolutions.get(i)) if row else None,
             "elixir_cost": row["elixir_cost"] if row else None,
         })
     # コストの安い順に並べると、デッキの見た目が安定する。
@@ -209,7 +255,8 @@ def deck_group_stats(conn, filters, config):
     for r in rows:
         # 表示は最後に使った構成。グループの基準（代表）とは一致しないことがある。
         shown_hash = latest.get(r["group_id"], r["representative_hash"])
-        cards = representative_cards(conn, shown_hash)
+        cards = representative_cards(
+            conn, shown_hash, latest_deck_evolutions(conn, shown_hash, filters.player_tag))
         stat = from_row(
             r, config,
             group_id=r["group_id"],
