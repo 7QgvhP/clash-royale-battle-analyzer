@@ -1,9 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 4 18 14" preserveAspectRatio="xMidYMid meet">
-  <!-- 画面左上のロゴ（style.css の .brand-mark）と同じ王冠。
-       色もアクセント色に合わせ、タブの明暗に応じて切り替える。 -->
-  <style>
-    path { fill: #4f46e5; }
-    @media (prefers-color-scheme: dark) { path { fill: #8b85f5; } }
-  </style>
-  <path d="M3 8l4 4 5-7 5 7 4-4v9H3z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- ホーム画面に追加したときのアイコン（icon-192.png）と同じ金色の王冠。
+       タブでは小さく表示されるため、王冠だけを少し大きくしてある。 -->
+  <rect width="192" height="192" fill="#12224f"/>
+  <path fill="#f5c242" d="M21.8 50.6 L56.3 83.8 L96.0 28.8 L135.7 83.8 L170.2 50.6 L170.2 133.8 L21.8 133.8 Z"/>
+  <rect x="21.8" y="142.7" width="148.4" height="20.5" fill="#f5c242"/>
 </svg>
