@@ -72,7 +72,8 @@ def query_for(tag, period, mode, deck, variant):
 
 def copy_assets(out_dir):
     """CSS・アイコン・カード画像を出力先へコピーする。"""
-    for name in ("style.css", "manifest.json", "icon-180.png", "icon-192.png", "icon-512.png"):
+    for name in ("style.css", "manifest.json", "favicon.svg", "favicon-32.png",
+                 "icon-180.png", "icon-192.png", "icon-512.png"):
         src = STATIC_DIR / name
         if src.exists():
             shutil.copy2(src, out_dir / name)
