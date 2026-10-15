@@ -35,7 +35,8 @@ def win_rate_trend(conn, filters, config, unit="day"):
 
     points = []
     for r in rows:
-        points.append(from_row(r, config, bucket=r["bucket"]))
+        # 日次・週次は目盛りが日付そのものなので、見出しも同じ文字列でよい。
+        points.append(from_row(r, config, bucket=r["bucket"], title=r["bucket"]))
     return points
 
 
@@ -44,7 +45,9 @@ def _win_rate_by_count(conn, filters, config, size):
 
     最新の点が「直近 size 戦」になるよう、新しい対戦から順に区切る。
     最も古い端数の区切りは、他の点と母数がそろわず比較できないため除く。
-    各点のラベルは、その区切りで最後に行った対戦の日付とする。
+    横軸の目盛り（bucket）は、古い側から数えた対戦数とする。区切りの幅が
+    対戦数である以上、日付より対戦数のほうが位置を読み取りやすいため。
+    日付は、どの時期かが分かるように、ツールチップの見出し（title）へ回す。
     """
     where, params = filters.where()
     rows = conn.execute(f"""
@@ -61,8 +64,14 @@ def _win_rate_by_count(conn, filters, config, size):
             key = {"win": "wins", "loss": "losses", "draw": "draws"}.get(r["result"])
             if key:
                 counts[key] += 1
-        points.append(from_row(counts, config, bucket=chunk[0]["day"]))
+        # chunk は新しい順のため、先頭がその区切りで最後に行った対戦になる。
+        points.append(from_row(counts, config, day=chunk[0]["day"]))
     points.reverse()
+
+    for i, point in enumerate(points):
+        last = (i + 1) * size
+        point["bucket"] = f"{last}戦"
+        point["title"] = f"{last - size + 1}〜{last}戦目（{point['day']} まで）"
     return points
 
 

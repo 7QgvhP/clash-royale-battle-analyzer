@@ -130,6 +130,9 @@ const winScales = () => ({
             ticks: { color: cssVar('--text-mute'), font: { size: 11 },
                      callback: v => v + '%' } })
 });
+// 目盛りは区切りの位置（日付、または古い側から数えた対戦数）だけを示す。
+// その区切りが何を指すかは、ツールチップの見出しで補う。
+const winTitles = {{ win_trend | map(attribute='title') | list | tojson }};
 const winChart = new Chart(document.getElementById('winChart'), {
   type: 'line',
   data: {
@@ -144,7 +147,8 @@ const winChart = new Chart(document.getElementById('winChart'), {
   options: Object.assign({}, CHART_BASE, {
     scales: winScales(),
     plugins: { legend: { display: false },
-               tooltip: { callbacks: { label: c => c.parsed.y + '%' } } }
+               tooltip: { callbacks: { title: items => winTitles[items[0].dataIndex],
+                                       label: c => c.parsed.y + '%' } } }
   })
 });
 winChart.$colorVar = '--accent';
