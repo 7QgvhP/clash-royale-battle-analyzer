@@ -45,10 +45,14 @@
   <span>
     <a class="seg-link {% if unit=='day' %}on{% endif %}" href="{{ page_url('summary') }}">日次</a>
     <a class="seg-link {% if unit=='week' %}on{% endif %}" href="{{ page_url('summary', variant='week') }}">週次</a>
+    <a class="seg-link {% if unit=='n10' %}on{% endif %}" href="{{ page_url('summary', variant='n10') }}">10戦</a>
+    <a class="seg-link {% if unit=='n50' %}on{% endif %}" href="{{ page_url('summary', variant='n50') }}">50戦</a>
   </span>
 </h2>
 {% if win_trend %}
   <div class="chart-box"><canvas id="winChart"></canvas></div>
+{% elif unit in ('n10', 'n50') %}
+  <div class="empty">対戦が{{ unit[1:] }}戦に満たないため、表示できません。</div>
 {% else %}
   <div class="empty">データがありません。</div>
 {% endif %}

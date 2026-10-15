@@ -156,8 +156,8 @@
     // 静的サイトは spells/index.html（配信側で spells/ に転送されることもある）
     name = '呪文';
   } else {
-    // 静的サイトは cards.html、サーバー稼働時は /cards。週次は summary-week。
-    var key = last.replace(/\.html$/, '').replace(/-week$/, '');
+    // 静的サイトは cards.html、サーバー稼働時は /cards。週次などは summary-week のように派生名が付く。
+    var key = last.replace(/\.html$/, '').replace(/-(week|n10|n50)$/, '');
     var names = {
       '': 'サマリー', summary: 'サマリー', cards: '苦手カード', meta: '環境',
       decks: '自デッキ', levels: 'レベル分析', history: '対戦履歴'

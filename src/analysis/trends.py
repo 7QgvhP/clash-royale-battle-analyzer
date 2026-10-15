@@ -8,8 +8,15 @@ DATE_KEY = "substr(m.battle_time, 1, 4) || '-' || substr(m.battle_time, 5, 2)" \
            " || '-' || substr(m.battle_time, 7, 2)"
 
 
+# 対戦数で区切る単位と、1区切りあたりの対戦数。
+COUNT_UNITS = {"n10": 10, "n50": 50}
+
+
 def win_rate_trend(conn, filters, config, unit="day"):
-    """日次または週次の勝率推移を返す。"""
+    """日次・週次、または一定の対戦数ごとの勝率推移を返す。"""
+    if unit in COUNT_UNITS:
+        return _win_rate_by_count(conn, filters, config, COUNT_UNITS[unit])
+
     where, params = filters.where()
     # 週次は日付キーからユリウス日を求め、7日単位に丸める。
     if unit == "week":
@@ -29,6 +36,33 @@ def win_rate_trend(conn, filters, config, unit="day"):
     points = []
     for r in rows:
         points.append(from_row(r, config, bucket=r["bucket"]))
+    return points
+
+
+def _win_rate_by_count(conn, filters, config, size):
+    """size 戦ごとの勝率推移を返す。
+
+    最新の点が「直近 size 戦」になるよう、新しい対戦から順に区切る。
+    最も古い端数の区切りは、他の点と母数がそろわず比較できないため除く。
+    各点のラベルは、その区切りで最後に行った対戦の日付とする。
+    """
+    where, params = filters.where()
+    rows = conn.execute(f"""
+        SELECT {DATE_KEY} AS day, m.result
+        FROM matches m WHERE {where}
+        ORDER BY m.battle_time DESC
+    """, params).fetchall()
+
+    points = []
+    for start in range(0, len(rows) - size + 1, size):
+        chunk = rows[start:start + size]
+        counts = {"wins": 0, "losses": 0, "draws": 0}
+        for r in chunk:
+            key = {"win": "wins", "loss": "losses", "draw": "draws"}.get(r["result"])
+            if key:
+                counts[key] += 1
+        points.append(from_row(counts, config, bucket=chunk[0]["day"]))
+    points.reverse()
     return points
 
 

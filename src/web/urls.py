@@ -25,7 +25,7 @@ SCREENS = {
 
 # 同じ絞り込みの中で追加生成する派生ページ。画面キー → 派生名の一覧。
 SCREEN_VARIANTS = {
-    "summary": ["week"],
+    "summary": ["week", "n10", "n50"],
 }
 
 
