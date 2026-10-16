@@ -182,7 +182,6 @@ def summary(conn, filters):
         "unit": unit,
         "win_trend": trends_analysis.win_rate_trend(conn, filters, config, unit),
         "trophy_trend": trends_analysis.trophy_trend(conn, filters),
-        "recent": trends_analysis.recent_matches(conn, filters, limit=10),
     }
 
 

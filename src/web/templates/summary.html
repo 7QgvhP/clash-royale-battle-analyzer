@@ -64,29 +64,6 @@
   <div class="empty">トロフィー情報を含む対戦がありません。</div>
 {% endif %}
 
-<h2>直近の対戦</h2>
-{% if recent %}
-  {% for mt in recent %}
-  <div class="match-row">
-    <div>
-      <div class="result-{{ mt.result }}">
-        {% if mt.result == 'win' %}勝ち{% elif mt.result == 'loss' %}負け{% else %}引分{% endif %}
-      </div>
-      <div class="card-meta">{{ mt.battle_time | jst }}</div>
-    </div>
-    <div class="num">
-      <div>{{ mt.crowns }}-{{ mt.opponent_crowns }}</div>
-      {% if mt.trophy_change is not none %}
-        <div class="card-meta">{{ "%+d" | format(mt.trophy_change) }}</div>
-      {% endif %}
-    </div>
-    <div>{{ m.deck_row(mt.opp_cards) }}</div>
-  </div>
-  {% endfor %}
-{% else %}
-  <div class="empty">対戦がありません。</div>
-{% endif %}
-
 {% endblock %}
 
 {% block scripts %}
