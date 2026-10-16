@@ -17,7 +17,6 @@ from flask import url_for
 SCREENS = {
     "summary": ("summary", "/", "summary.html"),
     "cards": ("weak_cards", "/cards", "cards.html"),
-    "meta": ("meta_view", "/meta", "meta.html"),
     "decks": ("deck_view", "/decks", "decks.html"),
     "levels": ("level_view", "/levels", "levels.html"),
     "history": ("history_view", "/history", "history.html"),

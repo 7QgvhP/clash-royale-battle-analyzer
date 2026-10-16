@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
-{% block title %}苦手カード | クラロワ対戦分析{% endblock %}
+{% block title %}相手カード | クラロワ対戦分析{% endblock %}
 
 {% block extra_filters %}
   {# ページを分けずブラウザ側で切り替える。組み合わせを増やさずに済む #}
@@ -27,7 +27,13 @@
   </div>
 </div>
 
-<h2>相手カード別の勝率（デルタ昇順＝苦手な順）</h2>
+<h2><span id="sort-title">相手カード別の勝率（デルタ昇順＝苦手な順）</span>
+  {# ページを分けずブラウザ側で並べ替える。静的サイトでもページ数が増えない #}
+  <span id="sort-switch">
+    <button type="button" class="seg-link on" data-sort="weak">苦手な順</button>
+    <button type="button" class="seg-link" data-sort="appear">対戦数順</button>
+  </span>
+</h2>
 
 {% if rows %}
 <div class="table-wrap">
@@ -41,9 +47,10 @@
       <th class="num col-appear">出現率</th>
     </tr>
   </thead>
-  <tbody>
+  <tbody id="card-rows">
     {% for row in rows %}
-    <tr class="{% if not row.reliable %}unreliable{% endif %}">
+    <tr class="{% if not row.reliable %}unreliable{% endif %}"
+        data-weak="{{ loop.index0 }}" data-total="{{ row.total }}">
       <td style="width:48px">{{ m.card_img(row) }}</td>
       <td>
         <span class="card-name">{{ row.name }}</span>
@@ -89,7 +96,9 @@
 <div class="note">
   カード単位の勝率は「そのカードのせいで負けた」ことを意味しない。強いデッキに採用されがちなカードは、
   それ自体の強さと無関係に勝率が低く見える（交絡）。傾向を掴むための指標として扱うこと。<br>
-  {{ min_matches }}戦未満のカードは参考値として薄く表示し、並び順でも後ろに置いている。
+  {{ min_matches }}戦未満のカードは参考値として薄く表示し、苦手な順では後ろに置いている。<br>
+  対戦数順は、そのカードが相手デッキに含まれていた対戦の多い順で、いま何が流行しているかの把握に使う。
+  出現率は、絞り込み後の全対戦のうち、そのカードが相手デッキに含まれていた割合。
 </div>
 
 {% endblock %}
@@ -107,6 +116,44 @@
   try { box.checked = localStorage.getItem('hideUnreliable') === '1'; } catch (e) {}
   apply();
   box.addEventListener('change', apply);
+})();
+
+// 並び順の切替。苦手な順はサーバーが並べた順（data-weak）をそのまま使う。
+(function () {
+  var tbody = document.getElementById('card-rows');
+  var buttons = document.querySelectorAll('#sort-switch [data-sort]');
+  var title = document.getElementById('sort-title');
+  if (!tbody || !buttons.length) return;
+  var titles = {
+    weak: '相手カード別の勝率（デルタ昇順＝苦手な順）',
+    appear: '相手デッキに現れたカード（対戦数順）'
+  };
+  var rows = Array.prototype.slice.call(tbody.rows);
+  var apply = function (sort) {
+    if (!titles[sort]) sort = 'weak';
+    var sorted = rows.slice().sort(function (a, b) {
+      if (sort === 'appear') {
+        // 対戦数が同じなら、苦手な順を保つ
+        var diff = Number(b.dataset.total) - Number(a.dataset.total);
+        if (diff) return diff;
+      }
+      return Number(a.dataset.weak) - Number(b.dataset.weak);
+    });
+    sorted.forEach(function (row) { tbody.appendChild(row); });
+    Array.prototype.forEach.call(buttons, function (btn) {
+      btn.classList.toggle('on', btn.dataset.sort === sort);
+    });
+    title.textContent = titles[sort];
+    // 対戦数順では出現率が主役になるため、幅の狭い端末でも列を隠さない
+    document.body.classList.toggle('sort-appear', sort === 'appear');
+    try { localStorage.setItem('cardSort', sort); } catch (e) {}
+  };
+  var saved = 'weak';
+  try { saved = localStorage.getItem('cardSort') || 'weak'; } catch (e) {}
+  apply(saved);
+  Array.prototype.forEach.call(buttons, function (btn) {
+    btn.addEventListener('click', function () { apply(btn.dataset.sort); });
+  });
 })();
 </script>
 {% endblock %}

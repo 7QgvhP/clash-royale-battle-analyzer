@@ -224,6 +224,7 @@ def export(conn, rotate_secret=False, clean=False):
             combo_dir.mkdir(parents=True, exist_ok=True)
 
             # 画面の定義は urls.SCREENS に一元化されている。
+            expected = set()
             for screen, (_endpoint, route, _file) in urlmod.SCREENS.items():
                 for variant in [None] + urlmod.SCREEN_VARIANTS.get(screen, []):
                     url = route + "?" + query_for(tag, period, mode, deck, variant)
@@ -234,7 +235,13 @@ def export(conn, rotate_secret=False, clean=False):
 
                     filename = urlmod.static_filename(screen, variant)
                     (combo_dir / filename).write_bytes(response.data)
+                    expected.add(filename)
                     written += 1
+
+            # 廃止した画面（統合した「環境」など）のページを残さない。
+            for old in combo_dir.glob("*.html"):
+                if old.name not in expected:
+                    old.unlink()
         written += export_match_details(conn, client, out_dir)
         written += export_card_details(conn, client, out_dir)
         written += export_spells_page(client, out_dir)

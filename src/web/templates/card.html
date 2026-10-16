@@ -14,7 +14,7 @@
    1枚1ファイルなので、戻り先を書き出し時には決められない。
    そのため参照元から判断して差し替える。JavaScriptが動かない場合や
    直接開かれた場合は、この既定の行き先がそのまま使われる。 #}
-<a class="back-link" id="back-link" href="{{ page_url('cards') }}">← 苦手カードへ戻る</a>
+<a class="back-link" id="back-link" href="{{ page_url('cards') }}">← 相手カードへ戻る</a>
 
 <div class="card-hero">
   {% if c.icon_path %}
@@ -159,7 +159,7 @@
     // 静的サイトは cards.html、サーバー稼働時は /cards。週次などは summary-week のように派生名が付く。
     var key = last.replace(/\.html$/, '').replace(/-(week|n10|n50)$/, '');
     var names = {
-      '': 'サマリー', summary: 'サマリー', cards: '苦手カード', meta: '環境',
+      '': 'サマリー', summary: 'サマリー', cards: '相手カード',
       decks: '自デッキ', levels: 'レベル分析', history: '対戦履歴'
     };
     name = names[key] || null;

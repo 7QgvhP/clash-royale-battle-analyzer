@@ -372,6 +372,8 @@ h2 + .match-row { border-top: none; }
   padding: 3px 9px; border-radius: var(--radius-sm);
 }
 .seg-link.on { background: var(--surface-2); color: var(--text); }
+/* ページ内で切り替えるボタン版。見た目はリンク版と揃える */
+button.seg-link { border: 0; background: none; font-family: inherit; line-height: inherit; cursor: pointer; }
 
 /* 参考値（最低試合数未満）の行を隠す切替 */
 body.hide-unreliable tr.unreliable { display: none; }
@@ -478,8 +480,9 @@ body.hide-unreliable tr.unreliable { display: none; }
    iPhone 16 Pro Max（440px）や Nothing Phone（412px）では横幅に余裕があるため、
    列を省くのは 400px 未満の端末に限る。 */
 @media (max-width: 400px) {
-  /* カード名の幅を確保する。出現率は「環境」画面で確認できる */
+  /* カード名の幅を確保する。出現率は「対戦数順」に切り替えると表示される */
   .col-appear { display: none; }
+  body.sort-appear .col-appear { display: table-cell; }
   .badge.evo { display: none; }
   th, td { padding: 8px 5px; }
   .hero-value { font-size: 36px; }

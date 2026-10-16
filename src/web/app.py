@@ -188,7 +188,7 @@ def summary(conn, filters):
 
 @screen("/cards", "cards", "cards.html")
 def weak_cards(conn, filters):
-    """画面2: 苦手・得意カード。"""
+    """画面2: 相手カード（苦手な順・対戦数順をブラウザ側で切り替える）。"""
     overall = stats_analysis.overall(conn, filters, config)
     rows, total = cards_analysis.opponent_card_stats(conn, filters, config, overall["rate"])
     return {
@@ -197,15 +197,6 @@ def weak_cards(conn, filters):
         "total_matches": total,
         "supports": cards_analysis.support_card_stats(conn, filters, config, overall["rate"]),
     }
-
-
-@screen("/meta", "meta", "meta.html")
-def meta_view(conn, filters):
-    """画面3: 環境（出現率順）。"""
-    overall = stats_analysis.overall(conn, filters, config)
-    rows, total = cards_analysis.opponent_card_stats(conn, filters, config, overall["rate"])
-    rows.sort(key=lambda x: -x["appearance_rate"])
-    return {"overall": overall, "rows": rows, "total_matches": total}
 
 
 @screen("/decks", "decks", "decks.html")
