@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}カード性能 | クラロワ対戦分析{% endblock %}
+
+{# カードの性能は絞り込みに依存しないため、共通のフィルタ行は出さない #}
+{% block filters %}{% endblock %}
+
+{% block content %}
+
+{% if groups %}
+  {% for g in groups %}
+  <h2>{% if g.cost is not none %}コスト {{ g.cost }}{% else %}コストなし{% endif %}
+    <span class="card-meta">{{ g.cards | length }}枚</span></h2>
+  <div class="catalog">
+    {% for c in g.cards %}
+    <a class="catalog-cell" href="{{ card_url(c.card_id) }}" title="{{ c.name }}">
+      {% if c.icon_path %}
+        <img class="card-img-lg" src="{{ asset_url('cards/' ~ c.icon_path) }}" alt="{{ c.name }}"
+             loading="lazy">
+      {% else %}
+        <span class="card-img placeholder"></span>
+      {% endif %}
+      <span class="card-cell-name">{{ c.name }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <div class="note">
+    カードを選ぶと、そのカードの性能値（HP・ダメージなど）を表示する。<br>
+    公式APIのカード一覧は表示用の並び順を持たないため、コストの低い順に、
+    同じコストの中ではレア度の低い順（ノーマル → レア → スーパーレア → ウルトラレア → チャンピオン）に並べている。
+  </div>
+{% else %}
+  <div class="empty">
+    カードマスタをまだ取得していません。<br>
+    <code>python -m src.collector.collect --update-cards</code> を実行してください。
+  </div>
+{% endif %}
+
+{% endblock %}

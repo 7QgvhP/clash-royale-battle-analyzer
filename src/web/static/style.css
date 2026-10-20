@@ -809,3 +809,19 @@ body.hide-unreliable tr.unreliable { display: none; }
 @media (max-width: 640px) {
   .variants .card-meta { display: inline; }
 }
+
+/* ---- カード性能の一覧 ----
+   カード画像を格子状に並べ、選ぶと性能値のページへ移る。 */
+.catalog {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 12px 10px;
+}
+.catalog-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
+  color: inherit; text-decoration: none;
+}
+.catalog-cell:hover .card-cell-name { color: var(--text); }
+
+@media (max-width: 640px) {
+  .catalog { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px 6px; }
+  .catalog .card-cell-name { font-size: 10px; }
+}

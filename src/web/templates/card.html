@@ -155,6 +155,8 @@
   } else if (parent === 'spells' || last === 'spells') {
     // 静的サイトは spells/index.html（配信側で spells/ に転送されることもある）
     name = '呪文';
+  } else if (parent === 'card-list' || last === 'card-list') {
+    name = 'カード性能';
   } else {
     // 静的サイトは cards.html、サーバー稼働時は /cards。週次などは summary-week のように派生名が付く。
     var key = last.replace(/\.html$/, '').replace(/-(week|n10|n50)$/, '');

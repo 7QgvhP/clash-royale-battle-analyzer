@@ -119,6 +119,17 @@ def spells_url(static_mode):
     return "../spells/index.html"
 
 
+def card_list_url(static_mode):
+    """カード性能の一覧へのURLを返す。
+
+    絞り込みに依存しないため、組み合わせごとには作らず
+    <secret>/card-list/index.html に1つだけ置く。
+    """
+    if not static_mode:
+        return url_for("card_list_view")
+    return "../card-list/index.html"
+
+
 def asset_url(path, static_mode):
     """CSSや画像へのURLを返す。"""
     if not static_mode:
@@ -145,5 +156,9 @@ def helpers(filters, static_mode):
     def spells():
         return spells_url(static_mode)
 
+    def card_list():
+        return card_list_url(static_mode)
+
     return {"page_url": page_url, "asset_url": asset, "match_url": match,
-            "card_url": card, "spells_url": spells, "static_mode": static_mode}
+            "card_url": card, "spells_url": spells, "card_list_url": card_list,
+            "static_mode": static_mode}

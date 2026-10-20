@@ -275,6 +275,21 @@ def card_view(card_id):
         conn.close()
 
 
+@app.route("/card-list")
+def card_list_view():
+    """カード性能の一覧。絞り込みに依存しないため @screen は使わない。"""
+    conn = get_conn()
+    try:
+        filters = Filters(player_tag=repo.default_player_tag(conn))
+        ctx = base_context(conn, filters)
+        # プレイヤー切替はサマリーへ向ける。この画面はプレイヤーに依存しない。
+        ctx.update({"active": "summary", "nav_active": "cardlist",
+                    "groups": cardstats_analysis.card_catalog(conn)})
+        return render_template("card_list.html", **ctx)
+    finally:
+        conn.close()
+
+
 @app.route("/spells")
 def spells_view():
     """呪文で倒せるユニット。絞り込みに依存しないため @screen は使わない。"""

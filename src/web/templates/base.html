@@ -77,13 +77,17 @@
 <div class="wrap">
 
   <nav class="nav">
-    {% set nav_items = [('summary', 'サマリー'), ('cards', '相手カード'),
+    {% set nav_items = [('summary', 'サマリー'), ('cardlist', 'カード性能'),
+                        ('cards', '相手カード'),
                         ('decks', '自デッキ'),
                         ('levels', 'レベル分析'), ('history', '対戦履歴'),
                         ('spells', '呪文')] %}
     {% for key, label in nav_items %}
-      {# 呪文の画面だけは絞り込みに依存しない1ページなので、行き先の作り方が違う #}
-      <a href="{{ spells_url() if key == 'spells' else page_url(key) }}"
+      {# カード性能と呪文の画面は絞り込みに依存しない1ページなので、行き先の作り方が違う #}
+      {%- if key == 'spells' %}{% set href = spells_url() %}
+      {%- elif key == 'cardlist' %}{% set href = card_list_url() %}
+      {%- else %}{% set href = page_url(key) %}{% endif %}
+      <a href="{{ href }}"
          class="{% if nav_active == key %}active{% endif %}">{{ label }}</a>
     {% endfor %}
   </nav>

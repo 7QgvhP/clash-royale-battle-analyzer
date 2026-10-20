@@ -26,9 +26,9 @@ MODES = [None, "PvP", "pathOfLegend"]
 
 # 絞り込みの組み合わせではないディレクトリ。古いページの掃除で消さないよう除外する。
 # 掃除の対象外にするディレクトリ。cards はカード画像、matches は対戦詳細、
-# card はカードの性能値ページ、spells は呪文で倒せるユニットの画面。
-# いずれも絞り込みの組み合わせではない。
-RESERVED_DIRS = {"cards", "matches", "card", "spells"}
+# card はカードの性能値ページ、spells は呪文で倒せるユニットの画面、
+# card-list はカード性能の一覧。いずれも絞り込みの組み合わせではない。
+RESERVED_DIRS = {"cards", "matches", "card", "spells", "card-list"}
 
 
 def get_secret(conn, rotate=False):
@@ -177,6 +177,18 @@ def export_spells_page(client, out_dir):
     return 1
 
 
+def export_card_list_page(client, out_dir):
+    """カード性能の一覧を書き出す。絞り込みに依存しないため1ファイルで済む。"""
+    list_dir = out_dir / "card-list"
+    list_dir.mkdir(parents=True, exist_ok=True)
+    response = client.get("/card-list")
+    if response.status_code != 200:
+        raise RuntimeError(f"カード性能の一覧の書き出しに失敗しました: {response.status_code}")
+    (list_dir / "index.html").write_bytes(response.data)
+    logging.info("カード性能の一覧を書き出しました")
+    return 1
+
+
 def write_index(out_dir, default_combo):
     """入口となるページ。既定の組み合わせへ転送する。"""
     target = f"{default_combo}/summary.html"
@@ -245,6 +257,7 @@ def export(conn, rotate_secret=False, clean=False):
         written += export_match_details(conn, client, out_dir)
         written += export_card_details(conn, client, out_dir)
         written += export_spells_page(client, out_dir)
+        written += export_card_list_page(client, out_dir)
     finally:
         webapp.STATIC_MODE = False
 
