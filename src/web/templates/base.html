@@ -134,6 +134,49 @@
 </div>
 
 <script>
+{% if static_mode %}
+// 呪文・カード性能・カード詳細は、絞り込みごとには作らず1ファイルしか書き出さない。
+// そのためナビの行き先は既定のプレイヤー向けに固定されてしまう。どのプレイヤーの
+// 画面から来たかは ?from=<組み合わせ> で受け取り、ここで行き先を直す。
+(function () {
+  var from = (location.search.match(/[?&]from=([^&]+)/) || [])[1];
+  if (!from) return;
+  from = decodeURIComponent(from);
+  // 「プレイヤー_期間_モード_デッキ」の4つ組だけを受け付ける
+  if (!/^[^_/]+_[^_/]+_[^_/]+_[^_/]+$/.test(from)) return;
+  var player = from.split("_")[0];
+  var rest = from.split("_").slice(1).join("_");
+
+  // 呪文の表のように、あとから作られるリンクもあるため、何度でも呼べるようにする。
+  function apply() {
+    document.querySelectorAll('a[href^="../"]').forEach(function (a) {
+      var m = a.getAttribute("href").match(/^\.\.\/([^/]+)\/([^?]+)(\?.*)?$/);
+      if (!m) return;
+      if (/^[^_]+_[^_]+_[^_]+_[^_]+$/.test(m[1])) {
+        // 絞り込みのページへ戻るリンク。来たときの組み合わせに差し替える。
+        a.setAttribute("href", "../" + from + "/" + m[2]);
+      } else if (m[1] === "spells" || m[1] === "card-list" || m[1] === "card") {
+        // 共通ページ同士のリンクでは、来たプレイヤーをそのまま引き継ぐ。
+        a.setAttribute("href", "../" + m[1] + "/" + m[2] + "?from=" + from);
+      }
+    });
+  }
+  window.applyFromCombo = apply;
+  apply();
+
+  // プレイヤーの選択も、来たときの状態に合わせる。
+  var select = document.querySelector(".player-switch");
+  if (select) {
+    [].forEach.call(select.options, function (o) {
+      var m = o.value.match(/^\.\.\/([^_/]+)_[^/]*\/(.+)$/);
+      if (!m) return;
+      o.value = "../" + m[1] + "_" + rest + "/" + m[2];
+      o.selected = m[1] === player;
+    });
+  }
+})();
+{% endif %}
+
 // 経過時間を表示時点で計算し直す。
 // 静的サイトは書き出し時のHTMLがそのまま配信されるため、
 // サーバー側で計算した「○分前」は開いた時刻と無関係な値になってしまう。

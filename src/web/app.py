@@ -275,7 +275,8 @@ def card_view(card_id):
             abort(404)
 
         # 詳細ページ自体は絞り込みを持たないが、ヘッダとナビは共通のものを使う。
-        filters = Filters(player_tag=repo.default_player_tag(conn))
+        # どのプレイヤーの画面から来たかはリクエストから引き継ぐ。
+        filters = Filters.from_request(request.args, repo.default_player_tag(conn))
         ctx = base_context(conn, filters)
         ctx.update({"active": "cards", "detail": detail})  # nav_active は None のまま
         return render_template("card.html", **ctx)
@@ -288,7 +289,9 @@ def card_list_view():
     """カード性能の一覧。絞り込みに依存しないため @screen は使わない。"""
     conn = get_conn()
     try:
-        filters = Filters(player_tag=repo.default_player_tag(conn))
+        # 画面の中身はプレイヤーに依存しないが、ヘッダとナビは共通のものを使うため、
+        # どのプレイヤーの画面から来たかをリクエストから引き継ぐ。
+        filters = Filters.from_request(request.args, repo.default_player_tag(conn))
         ctx = base_context(conn, filters)
         # プレイヤー切替はサマリーへ向ける。この画面はプレイヤーに依存しない。
         ctx.update({"active": "summary", "nav_active": "cardlist",
@@ -304,13 +307,14 @@ def spells_view():
     conn = get_conn()
     try:
         data = spells_analysis.calculator_data(conn)
+        # 同上。カード詳細へのリンクにも、見ているプレイヤーを引き継がせる。
+        filters = Filters.from_request(request.args, repo.default_player_tag(conn))
         # 画像とカード詳細への行き先は、サーバー稼働時と静的サイトで異なるためここで決める
         for item in data["spells"] + data["units"]:
-            item["url"] = urlmod.card_url(item["card_id"], STATIC_MODE)
+            item["url"] = urlmod.card_url(item["card_id"], STATIC_MODE, filters)
             item["icon_url"] = (urlmod.asset_url("cards/" + item["icon"], STATIC_MODE)
                                 if item["icon"] else None)
 
-        filters = Filters(player_tag=repo.default_player_tag(conn))
         ctx = base_context(conn, filters)
         # プレイヤー切替はサマリーへ向ける。この画面はプレイヤーに依存しない。
         ctx.update({"active": "summary", "nav_active": "spells", "calc": data})

@@ -221,6 +221,10 @@
         '</div></div>';
       return '<tr><td>' + name + '</td>' + r.results.map(cell).join('') + '</tr>';
     }).join('');
+
+    // カード詳細へのリンクは、ここで作り直すたびに書き出し時の値に戻る。
+    // 見ているプレイヤーを引き継ぐため、base.html の処理をもう一度通す。
+    if (window.applyFromCombo) window.applyFromCombo();
   }
 
   // 選択をURLに残し、同じ条件のまま共有・再訪できるようにする

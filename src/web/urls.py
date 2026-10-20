@@ -84,6 +84,33 @@ def build(screen, filters, static_mode, overrides=None, variant=None):
     return f"../{combo_key(player, period, mode, deck)}/{static_filename(screen, variant)}"
 
 
+def filter_params(filters):
+    """サーバー稼働時に、絞り込みをクエリ文字列へ渡すための辞書を返す。"""
+    params = {"period": filters.period}
+    if filters.player_tag:
+        params["player"] = filters.player_tag
+    if filters.modes:
+        params["modes"] = filters.modes[0]
+    if filters.deck_group_id is not None:
+        params["deck"] = filters.deck_group_id
+    return params
+
+
+def _carry(filters):
+    """共通ページへのリンクに付ける、呼び出し元の絞り込みを表すクエリ文字列。
+
+    呪文・カード性能・カード詳細は、絞り込みごとには作らず1ファイルだけ
+    書き出す。そのため、リンクの行き先は既定のプレイヤー向けになっている。
+    どのプレイヤーから来たかをここで引き渡し、ページ側（base.html の
+    スクリプト）でナビの行き先を直す。
+    """
+    if filters is None or not filters.player_tag:
+        return ""
+    mode = filters.modes[0] if filters.modes else None
+    return "?from=" + combo_key(filters.player_tag, filters.period, mode,
+                                filters.deck_group_id)
+
+
 def match_url(match_id, static_mode):
     """対戦詳細ページへのURLを返す。
 
@@ -96,38 +123,38 @@ def match_url(match_id, static_mode):
     return f"../matches/{match_id}.html"
 
 
-def card_url(card_id, static_mode):
+def card_url(card_id, static_mode, filters=None):
     """カード詳細ページへのURLを返す。
 
     性能値は絞り込みに依存しないため、組み合わせごとには作らず
     <secret>/card/<id>.html に1つだけ置く。画像を入れる cards/ とは
-    別の名前にして衝突を避ける。
+    別の名前にして衝突を避ける。見ているプレイヤーは引き継ぐ。
     """
     if not static_mode:
-        return url_for("card_view", card_id=card_id)
-    return f"../card/{card_id}.html"
+        return url_for("card_view", card_id=card_id, **filter_params(filters))             if filters else url_for("card_view", card_id=card_id)
+    return f"../card/{card_id}.html{_carry(filters)}"
 
 
-def spells_url(static_mode):
+def spells_url(static_mode, filters=None):
     """呪文で倒せるユニットの画面へのURLを返す。
 
     絞り込みに依存しないため、組み合わせごとには作らず
-    <secret>/spells/index.html に1つだけ置く。
+    <secret>/spells/index.html に1つだけ置く。見ているプレイヤーは引き継ぐ。
     """
     if not static_mode:
-        return url_for("spells_view")
-    return "../spells/index.html"
+        return url_for("spells_view", **filter_params(filters)) if filters             else url_for("spells_view")
+    return f"../spells/index.html{_carry(filters)}"
 
 
-def card_list_url(static_mode):
+def card_list_url(static_mode, filters=None):
     """カード性能の一覧へのURLを返す。
 
     絞り込みに依存しないため、組み合わせごとには作らず
-    <secret>/card-list/index.html に1つだけ置く。
+    <secret>/card-list/index.html に1つだけ置く。見ているプレイヤーは引き継ぐ。
     """
     if not static_mode:
-        return url_for("card_list_view")
-    return "../card-list/index.html"
+        return url_for("card_list_view", **filter_params(filters)) if filters             else url_for("card_list_view")
+    return f"../card-list/index.html{_carry(filters)}"
 
 
 def asset_url(path, static_mode):
@@ -151,13 +178,13 @@ def helpers(filters, static_mode):
         return match_url(match_id, static_mode)
 
     def card(card_id):
-        return card_url(card_id, static_mode)
+        return card_url(card_id, static_mode, filters)
 
     def spells():
-        return spells_url(static_mode)
+        return spells_url(static_mode, filters)
 
     def card_list():
-        return card_list_url(static_mode)
+        return card_list_url(static_mode, filters)
 
     return {"page_url": page_url, "asset_url": asset, "match_url": match,
             "card_url": card, "spells_url": spells, "card_list_url": card_list,
