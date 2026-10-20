@@ -4,12 +4,55 @@
 
 {% block content %}
 
-<h2>対戦履歴（{{ total }}件）</h2>
+<h2>対戦履歴（<span id="history-count">{{ total }}</span>件）</h2>
+
+{# 相手カードでの絞り込み。カードは対戦した回数の多い順に並べ、名前でも探せるようにする。
+   全カードを並べると目的のカードを探しにくいため、実際に対戦したカードだけを候補にする。 #}
+{% if opp_card_choices %}
+<div class="opp-filter" id="opp-filter"
+     data-static="{{ 'true' if static_mode else 'false' }}"
+     data-selected="{{ opp_card_id or '' }}"
+     {% if not static_mode %}data-base-url="{{ url_for('history_view', **query) }}"{% endif %}>
+  <div class="opp-filter-head">
+    <span class="card-meta">相手カード</span>
+    <span class="opp-filter-chip" id="opp-filter-chip" hidden>
+      <img id="opp-filter-chip-img" alt="">
+      <span id="opp-filter-chip-name"></span>
+      <button type="button" class="seg-link" id="opp-filter-clear">解除</button>
+    </span>
+    <button type="button" class="seg-link" id="opp-filter-toggle" aria-expanded="false"
+            aria-controls="opp-filter-panel">カードを選ぶ</button>
+  </div>
+  <div class="opp-filter-panel" id="opp-filter-panel" hidden>
+    <input type="search" class="opp-filter-search" id="opp-filter-search"
+           placeholder="カード名で探す（例: ほぐ、ペッカ）" autocomplete="off">
+    <div class="catalog opp-filter-grid" id="opp-filter-grid">
+      {% for c in opp_card_choices %}
+      <button type="button" class="catalog-cell opp-filter-cell" data-card-id="{{ c.card_id }}"
+              data-name="{{ c.name }}" data-search="{{ c.name }} {{ c.name_en }}"
+              title="{{ c.name }}（{{ c.count }}戦）">
+        {% if c.icon_path %}
+          <img class="card-img-lg" src="{{ asset_url('cards/' ~ c.icon_path) }}" alt="{{ c.name }}"
+               loading="lazy">
+        {% else %}
+          <span class="card-img placeholder"></span>
+        {% endif %}
+        <span class="card-cell-name">{{ c.name }}</span>
+        <span class="card-meta">{{ c.count }}戦</span>
+      </button>
+      {% endfor %}
+    </div>
+    <div class="empty" id="opp-filter-none" hidden>該当するカードがありません。</div>
+  </div>
+</div>
+{% endif %}
 
 {% if matches %}
   {% for mt in matches %}
-  {# 行全体をリンクにして、詳細を開きやすくする #}
+  {# 行全体をリンクにして、詳細を開きやすくする。
+     data-opp は、静的サイトでブラウザ側の絞り込みに使う相手カードのID。 #}
   <a class="match-row match-link" href="{{ match_url(mt.id) }}"
+     data-opp=" {% for c in mt.opp_cards %}{{ c.card_id }} {% endfor %}"
      style="grid-template-columns: 110px 70px 1fr">
     <div>
       <div class="result-{{ mt.result }}">
@@ -41,6 +84,7 @@
   {% endfor %}
 
   {% if static_mode %}
+    <div class="empty" id="history-none" hidden>該当する対戦がありません。</div>
     {% if total > matches | length %}
       <div class="note">直近{{ matches | length }}件を表示している（全{{ total }}件）。
         すべての履歴は、収集を行っているPC上のダッシュボードで確認できる。</div>
@@ -48,16 +92,114 @@
   {% else %}
   <div style="margin-top:20px; display:flex; gap:10px; align-items:center">
     {% if page > 1 %}
-      <a href="{{ url_for('history_view', page=page-1, **query) }}">← 前へ</a>
+      <a href="{{ url_for('history_view', page=page-1, opp_card=opp_card_id, **query) }}">← 前へ</a>
     {% endif %}
     <span class="card-meta">{{ page }} / {{ pages }}</span>
     {% if page < pages %}
-      <a href="{{ url_for('history_view', page=page+1, **query) }}">次へ →</a>
+      <a href="{{ url_for('history_view', page=page+1, opp_card=opp_card_id, **query) }}">次へ →</a>
     {% endif %}
   </div>
   {% endif %}
 {% else %}
   <div class="empty">該当する対戦がありません。</div>
 {% endif %}
+
+<script>
+// 相手カードでの絞り込み。
+// サーバー稼働時は、選んだカードをクエリ文字列に入れて読み直す（ページ送りも絞り込んだまま行うため）。
+// 静的サイトはクエリ文字列を使えないため、書き出した直近分の行をブラウザ側で隠し、
+// 選んだカードは URL の # に残す（再読み込みや戻るで選択を保つため）。
+(function () {
+  var box = document.getElementById('opp-filter');
+  if (!box) return;
+  var isStatic = box.dataset.static === 'true';
+  var panel = document.getElementById('opp-filter-panel');
+  var toggle = document.getElementById('opp-filter-toggle');
+  var search = document.getElementById('opp-filter-search');
+  var count = document.getElementById('history-count');
+  var total = count.textContent;
+  var cells = Array.prototype.slice.call(box.querySelectorAll('.opp-filter-cell'));
+
+  // カタカナをひらがなに寄せ、どちらで入力しても見つかるようにする。
+  function normalize(text) {
+    return (text || '').toLowerCase().replace(/[ァ-ヶ]/g, function (ch) {
+      return String.fromCharCode(ch.charCodeAt(0) - 0x60);
+    });
+  }
+
+  function cellOf(id) {
+    for (var i = 0; i < cells.length; i++) {
+      if (cells[i].dataset.cardId === String(id)) return cells[i];
+    }
+    return null;
+  }
+
+  function setPanel(open) {
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) search.focus();
+  }
+
+  // 選択中のカードを見出しの横に出し、静的サイトでは行を絞り込む。
+  function apply(id) {
+    var cell = id ? cellOf(id) : null;
+    document.getElementById('opp-filter-chip').hidden = !cell;
+    toggle.textContent = cell ? '変更' : 'カードを選ぶ';
+    cells.forEach(function (c) { c.classList.toggle('on', c === cell); });
+    if (cell) {
+      var img = cell.querySelector('img');
+      var chipImg = document.getElementById('opp-filter-chip-img');
+      chipImg.hidden = !img;
+      if (img) { chipImg.src = img.src; chipImg.alt = cell.dataset.name; }
+      document.getElementById('opp-filter-chip-name').textContent = cell.dataset.name;
+    }
+    if (!isStatic) return;
+    var shown = 0;
+    Array.prototype.forEach.call(document.querySelectorAll('.match-row[data-opp]'), function (row) {
+      var hit = !cell || row.dataset.opp.indexOf(' ' + id + ' ') >= 0;
+      row.hidden = !hit;
+      if (hit) shown++;
+    });
+    count.textContent = cell ? shown : total;
+    var none = document.getElementById('history-none');
+    if (none) none.hidden = shown > 0;
+  }
+
+  function select(id) {
+    if (!isStatic) {
+      var url = box.dataset.baseUrl;
+      if (id) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'opp_card=' + id;
+      location.href = url;
+      return;
+    }
+    history.replaceState(null, '', id ? '#card=' + id : location.pathname + location.search);
+    apply(id);
+    setPanel(false);
+  }
+
+  toggle.addEventListener('click', function () { setPanel(panel.hidden); });
+  document.getElementById('opp-filter-clear').addEventListener('click', function () { select(null); });
+  cells.forEach(function (c) {
+    c.addEventListener('click', function () { select(c.dataset.cardId); });
+  });
+  search.addEventListener('input', function () {
+    var q = normalize(search.value.trim());
+    var shown = 0;
+    cells.forEach(function (c) {
+      var hit = !q || normalize(c.dataset.search).indexOf(q) >= 0;
+      c.hidden = !hit;
+      if (hit) shown++;
+    });
+    document.getElementById('opp-filter-none').hidden = shown > 0;
+  });
+
+  var initial = box.dataset.selected;
+  if (isStatic) {
+    var m = location.hash.match(/card=(\d+)/);
+    initial = m ? m[1] : '';
+  }
+  apply(initial || null);
+})();
+</script>
 
 {% endblock %}

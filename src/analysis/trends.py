@@ -92,9 +92,26 @@ def trophy_trend(conn, filters):
     return points
 
 
-def recent_matches(conn, filters, limit=50, offset=0):
-    """対戦履歴の一覧を返す。両者のデッキも併せて取得する。"""
+# 相手のデッキに特定のカードを含む対戦に限る条件。対戦履歴の絞り込みでだけ使う。
+OPP_CARD_CLAUSE = ("EXISTS (SELECT 1 FROM match_cards mc WHERE mc.match_id = m.id"
+                   " AND mc.side = 'opponent' AND mc.card_id = ?)")
+
+
+def _history_where(filters, opp_card_id=None):
+    """対戦履歴用のWHERE句。共通の絞り込みに、相手カードの条件を足す。"""
     where, params = filters.where()
+    if opp_card_id is not None:
+        where += " AND " + OPP_CARD_CLAUSE
+        params = params + [opp_card_id]
+    return where, params
+
+
+def recent_matches(conn, filters, limit=50, offset=0, opp_card_id=None):
+    """対戦履歴の一覧を返す。両者のデッキも併せて取得する。
+
+    opp_card_id を渡すと、相手のデッキにそのカードを含む対戦だけに絞る。
+    """
+    where, params = _history_where(filters, opp_card_id)
     rows = conn.execute(f"""
         SELECT m.* FROM matches m
         WHERE {where}
@@ -125,8 +142,42 @@ def recent_matches(conn, filters, limit=50, offset=0):
     return matches
 
 
-def match_count(conn, filters):
+def match_count(conn, filters, opp_card_id=None):
     """絞り込み条件に合致する対戦数を返す。"""
-    where, params = filters.where()
+    where, params = _history_where(filters, opp_card_id)
     row = conn.execute(f"SELECT COUNT(*) AS c FROM matches m WHERE {where}", params).fetchone()
     return row["c"] or 0
+
+
+def opponent_card_choices(conn, filters, recent_limit=None):
+    """対戦履歴の絞り込みで選べる相手カードを、対戦した回数の多い順に返す。
+
+    recent_limit を渡すと、直近のその件数の対戦に出てきたカードだけにする。
+    静的サイトは直近分しか載せないため、選んでも1件も出ないカードを並べないようにする。
+    """
+    from src.analysis.decks import card_icon
+
+    where, params = filters.where()
+    limit_sql = ""
+    if recent_limit is not None:
+        limit_sql = " LIMIT ?"
+        params = params + [recent_limit]
+    rows = conn.execute(f"""
+        SELECT c.card_id, c.name_en, c.name_ja, c.icon_path, c.evo_icon_path,
+               c.hero_icon_path, COUNT(*) AS n
+        FROM match_cards mc
+        JOIN cards c ON c.card_id = mc.card_id
+        WHERE mc.side = 'opponent' AND mc.is_support = 0
+          AND mc.match_id IN (
+              SELECT m.id FROM matches m WHERE {where}
+              ORDER BY m.battle_time DESC{limit_sql})
+        GROUP BY c.card_id
+        ORDER BY n DESC, c.card_id
+    """, params).fetchall()
+    return [{
+        "card_id": r["card_id"],
+        "name": r["name_ja"] or r["name_en"],
+        "name_en": r["name_en"],
+        "icon_path": card_icon(r, None),
+        "count": r["n"],
+    } for r in rows]

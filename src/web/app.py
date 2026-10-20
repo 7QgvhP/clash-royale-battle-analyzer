@@ -227,14 +227,22 @@ def history_view(conn, filters):
     page = max(1, int(request.args.get("page", 1)))
     # 静的サイトではページ数が組み合わせ分だけ増えるため、直近分のみを1ページに出す。
     per_page = config.publish_history_limit if STATIC_MODE else 25
-    total = trends_analysis.match_count(conn, filters)
+    # 相手カードでの絞り込み。静的サイトはクエリ文字列を使えないため、
+    # 書き出した直近分をブラウザ側で絞り込む（テンプレートのスクリプト）。
+    opp_card = request.args.get("opp_card", "")
+    opp_card_id = int(opp_card) if opp_card.isdigit() and not STATIC_MODE else None
+    total = trends_analysis.match_count(conn, filters, opp_card_id)
     return {
         "matches": trends_analysis.recent_matches(
-            conn, filters, limit=per_page, offset=(page - 1) * per_page),
+            conn, filters, limit=per_page, offset=(page - 1) * per_page,
+            opp_card_id=opp_card_id),
         "page": page,
         "per_page": per_page,
         "total": total,
         "pages": max(1, (total + per_page - 1) // per_page),
+        "opp_card_id": opp_card_id,
+        "opp_card_choices": trends_analysis.opponent_card_choices(
+            conn, filters, per_page if STATIC_MODE else None),
     }
 
 

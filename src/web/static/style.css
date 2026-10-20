@@ -356,6 +356,42 @@ h2 + .match-row { border-top: none; }
 .result-draw { color: var(--text-sub); background: var(--surface-2); }
 .versus { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 
+/* 相手カードでの絞り込み */
+.opp-filter { margin-bottom: 14px; }
+.opp-filter-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-height: 32px; }
+.opp-filter-chip {
+  display: inline-flex; gap: 6px; align-items: center;
+  font-size: 13px; font-weight: 500;
+  padding: 2px 4px 2px 6px; border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.opp-filter-chip[hidden] { display: none; }
+.opp-filter-chip img { width: 24px; height: 29px; object-fit: contain; }
+.opp-filter-panel {
+  margin-top: 10px; padding: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface);
+}
+.opp-filter-search {
+  font: inherit; font-size: 13px; width: 100%; max-width: 320px;
+  padding: 7px 12px; margin-bottom: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+}
+.opp-filter-search:focus-visible {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* 候補が多くても画面を占領しないよう、高さを抑えて中をスクロールさせる */
+.opp-filter-grid { max-height: 320px; overflow-y: auto; }
+.opp-filter-cell {
+  border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+  padding: 4px 2px; border-radius: var(--radius-sm);
+}
+.opp-filter-cell[hidden] { display: none; }
+.opp-filter-cell:hover { background: var(--surface-hover); }
+.opp-filter-cell.on { background: var(--accent-soft); }
+.match-row[hidden] { display: none; }
+
 /* ---------- 注記・グラフ ---------- */
 
 /* 注記は面で囲わず、左端の細い縦線で本文と区別する */
