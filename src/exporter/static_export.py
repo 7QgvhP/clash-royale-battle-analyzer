@@ -8,6 +8,7 @@
 閲覧できる状態にする。
 """
 import argparse
+import json
 import logging
 import secrets
 import shutil
@@ -72,7 +73,9 @@ def query_for(tag, period, mode, deck, variant):
 
 def copy_assets(out_dir):
     """CSS・アイコン・カード画像を出力先へコピーする。"""
-    for name in ("style.css", "manifest.json", "favicon.svg", "favicon-32.png",
+    # manifest.json は公開先に合わせて書き換えるため、ここではコピーしない
+    # （write_manifest を参照）。
+    for name in ("style.css", "favicon.svg", "favicon-32.png",
                  "icon-180.png", "icon-192.png", "icon-512.png"):
         src = STATIC_DIR / name
         if src.exists():
@@ -189,6 +192,27 @@ def export_card_list_page(client, out_dir):
     return 1
 
 
+def write_manifest(out_dir, default_combo):
+    """ホーム画面へ追加したときの設定（manifest.json）を公開先向けに書き出す。
+
+    手元のダッシュボードは `/` がそのまま入口になるが、公開サイトの中身は
+    推測困難なディレクトリの下にあり、ルートには何も置いていない。元の
+    manifest は `/` 起点で書いてあるため、そのまま配るとショートカットが
+    存在しないルートを開いてしまう。ここで相対指定へ直す。
+
+    manifest 内の相対パスは manifest 自身の位置（= 推測困難なディレクトリ）
+    を基準に解決されるため、秘密のURLを manifest に書く必要はない。
+    """
+    manifest = json.loads((STATIC_DIR / "manifest.json").read_text(encoding="utf-8"))
+    manifest["start_url"] = f"./{default_combo}/summary.html"
+    # 画面の移動がアプリの中に収まるよう、範囲は書き出し先の全体にする。
+    manifest["scope"] = "./"
+    for icon in manifest.get("icons", []):
+        icon["src"] = icon["src"].rsplit("/", 1)[-1]
+    (out_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def write_index(out_dir, default_combo):
     """入口となるページ。既定の組み合わせへ転送する。"""
     target = f"{default_combo}/summary.html"
@@ -281,7 +305,9 @@ def export(conn, rotate_secret=False, clean=False):
         "/*\n  X-Robots-Tag: noindex, nofollow\n", encoding="utf-8")
 
     default_tag = repo.default_player_tag(conn)
-    write_index(out_dir, urlmod.combo_key(default_tag, "all", None, None))
+    default_combo = urlmod.combo_key(default_tag, "all", None, None)
+    write_manifest(out_dir, default_combo)
+    write_index(out_dir, default_combo)
 
     total_size = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
     logging.info("書き出し完了: %d組の絞り込み / %dページ / 画像 %d件",
