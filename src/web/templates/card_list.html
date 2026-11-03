@@ -15,7 +15,7 @@
     <div class="metric-sub">所持 {{ progress_summary.owned }} / {{ progress_summary.total }}枚</div>
   </div>
   <div class="metric">
-    <div class="metric-label">上げられる</div>
+    <div class="metric-label">Lvアップ可能</div>
     <div class="metric-value">{{ progress_summary.ready }}</div>
     <div class="metric-sub">枚数が足りているカード（今の枚数で合計 +{{ progress_summary.steps }}段）</div>
   </div>
@@ -59,7 +59,7 @@
           </a>
           <div>
             <span class="card-name">{{ r.name }}</span>
-            {% if r.ready %}<span class="badge ready">上げられる</span>{% endif %}
+            {% if r.ready %}<span class="badge ready">Lvアップ可能</span>{% endif %}
             {% if not r.owned %}<span class="badge">未入手</span>{% endif %}
             <div class="card-meta">
               {{ rarity_labels.get(r.rarity, r.rarity) }}
@@ -123,7 +123,7 @@
   <strong style="font-weight:600">表の見出しを押すと、その列で並べ替えられる</strong>（もう一度押すと逆順）。<br>
   <strong style="font-weight:600">所持</strong> は今持っている枚数、
   <strong style="font-weight:600">次のLvに必要</strong> はレベルを1つ上げるのに要る枚数で、
-  不足が無いものには「上げられる」を付けている。<br>
+  不足が無いものには「Lvアップ可能」を付けている。<br>
   レベルの下の <strong style="font-weight:600">→ 13（+2）</strong> は、
   <strong style="font-weight:600">今の所持枚数だけで続けて上げたときの到達レベル</strong>。
   1レベル上げるごとに枚数を使い、残りで次も上げられるなら続ける、という数え方をしている。
