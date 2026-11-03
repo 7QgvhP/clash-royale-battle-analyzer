@@ -274,6 +274,8 @@
       th.classList.add("sort-head");
       th.tabIndex = 0;
       th.setAttribute("role", "button");
+      // 押せることが分かるよう、説明も添える（スマートフォンでは出ないが害はない）
+      th.title = label + "で並べ替え（もう一度押すと逆順）";
       th.addEventListener("click", activate);
       th.addEventListener("keydown", function (e) {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); }
