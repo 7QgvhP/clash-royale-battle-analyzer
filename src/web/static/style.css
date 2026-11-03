@@ -285,13 +285,18 @@ th.sort-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -
 /* 押せることが分かるよう、並べ替えできる列には常に上下の矢印を出す。
    並べ替え中の列だけ、その向きの矢印をアクセント色で示す。 */
 th.sort-head::after {
-  content: "⇅"; font-size: 10px; margin-left: 4px;
+  /* 選んでいない列は、▲と▼を上下に重ねて「どちら向きにも並べ替えられる」ことを示す */
+  content: "▲\A▼"; white-space: pre; display: inline-block; vertical-align: middle;
+  font-size: 6px; line-height: 1.1; margin-left: 4px;
   color: var(--text-mute); opacity: 0.5;
 }
 th.sort-head:hover::after { opacity: 1; }
-th[aria-sort]::after { opacity: 1; color: var(--accent); }
-th[aria-sort="ascending"]::after { content: "▲"; font-size: 9px; }
-th[aria-sort="descending"]::after { content: "▼"; font-size: 9px; }
+/* 並べ替え中の列は、その向きだけを大きく示す */
+th[aria-sort]::after {
+  opacity: 1; color: var(--accent); font-size: 9px; line-height: 1; white-space: normal;
+}
+th[aria-sort="ascending"]::after { content: "▲"; }
+th[aria-sort="descending"]::after { content: "▼"; }
 th[aria-sort] { color: var(--text); }
 
 /* 見出しを隠す表（自デッキ・カード育成）向けの、並べ替えボタン。
@@ -303,10 +308,13 @@ th[aria-sort] { color: var(--text); }
   font-weight: 600; letter-spacing: 0.06em; margin-right: 4px;
 }
 .sort-chips button::after {
-  content: "⇅"; font-size: 10px; margin-left: 3px; opacity: 0.5;
+  content: "▲\A▼"; white-space: pre; display: inline-block; vertical-align: middle;
+  font-size: 6px; line-height: 1.1; margin-left: 3px; opacity: 0.5;
 }
 .sort-chips button.on::after { opacity: 1; }
-.sort-chips button[data-dir]::after { content: "▼"; font-size: 9px; }
+.sort-chips button[data-dir]::after {
+  content: "▼"; font-size: 9px; line-height: 1; white-space: normal;
+}
 .sort-chips button[data-dir="ascending"]::after { content: "▲"; }
 
 @media (max-width: 640px) {
