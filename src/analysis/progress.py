@@ -14,6 +14,7 @@
 """
 import json
 
+from src.db import repository as repo
 
 
 def mastery_caps(conn):
@@ -22,20 +23,14 @@ def mastery_caps(conn):
     公式APIは一律で 10 を返すが、タスクセットが2つしかないカードは段階7で
     打ち止めになる。実際の上限は Liquipedia 由来の値を使う（収集時に保存）。
     """
-    saved = repo_get_meta(conn, "mastery_caps")
+    saved = repo.get_meta(conn, "mastery_caps")
     return json.loads(saved) if saved else None
 
 
 def upgrade_table(conn):
     """レベルアップに必要な枚数・ゴールドの表を返す。未取得なら None。"""
-    saved = repo_get_meta(conn, "upgrade_table")
+    saved = repo.get_meta(conn, "upgrade_table")
     return json.loads(saved) if saved else None
-
-
-def repo_get_meta(conn, key):
-    """meta テーブルの値を1つ返す（repository への依存を1か所に閉じる）。"""
-    from src.db import repository as repo
-    return repo.get_meta(conn, key)
 
 
 def _required(table, kind, rarity, level):
@@ -64,6 +59,68 @@ def _reachable(table, rarity, level, count, game_max):
     return reached, reached - level
 
 
+def _usage_counts(conn, player_tag):
+    """このツールが持っている対戦履歴での、カードごとの使用回数を返す。"""
+    return {r["card_id"]: r["n"] for r in conn.execute(
+        "SELECT mc.card_id, COUNT(*) AS n FROM match_cards mc"
+        " JOIN matches m ON m.id = mc.match_id"
+        " WHERE mc.side = 'me' AND m.player_tag = ? GROUP BY mc.card_id",
+        (player_tag,))}
+
+
+def _card_row(card, have, badge, used, table, caps, game_max):
+    """カード1枚分の育成状況を組み立てる。
+
+    card … カードマスタの行、have … 所持状況（未入手なら None）、
+    badge … マスタリーのバッジ（記録が無ければ None）。
+    """
+    rarity = (card["rarity"] or "").lower()
+    # APIのレベルはレアリティごとの通し番号。ゲーム内の表記に直す。
+    level = None
+    if have and have["level"] is not None and have["max_level"]:
+        level = have["level"] + (game_max - have["max_level"])
+
+    count = have["card_count"] if have else 0
+    next_level = level + 1 if level and level < game_max else None
+    need = _required(table, "cards", rarity, next_level) if next_level else None
+    short = max(0, need - count) if need is not None else None
+    # 今の枚数だけで、続けて何レベルまで上げられるか
+    reach, steps = _reachable(table, rarity, level, count, game_max)
+
+    # マスタリーの上限は、分かっていればタスクセット由来の値を使う。無ければAPIの値。
+    mastery_max = caps.get(card["name_en"]) or (badge["max_level"] if badge else None)
+
+    return {
+        "card_id": card["card_id"],
+        "name": card["name_ja"] or card["name_en"],
+        "name_en": card["name_en"],
+        "rarity": rarity,
+        "elixir_cost": card["elixir_cost"],
+        "icon_path": card["icon_path"],
+        "owned": have is not None,
+        "level": level,
+        "max_level": game_max,
+        "maxed": level == game_max if level else False,
+        "count": count,
+        "next_level": next_level,
+        "need": need,
+        "short": short,
+        "reach_level": reach,
+        "reach_steps": steps,
+        # 不足が無いものはレベルを上げられる。必要量が分からないものは None。
+        "ready": (short == 0) if short is not None else None,
+        "star_level": have["star_level"] if have else None,
+        "evolution_level": have["evolution_level"] if have else 0,
+        "mastery_level": badge["level"] if badge else None,
+        "mastery_max": mastery_max,
+        # 上限に達していれば、これ以上進められない（公式APIでは判別できない）
+        "mastery_done": bool(badge and mastery_max and badge["level"] >= mastery_max),
+        "mastery_progress": badge["progress"] if badge else None,
+        "mastery_target": badge["target"] if badge else None,
+        "used": used,
+    }
+
+
 def card_progress(conn, player_tag):
     """プレイヤーのカードごとの育成状況を返す。
 
@@ -71,8 +128,6 @@ def card_progress(conn, player_tag):
     最初に開いたときに知りたいのは「いま上げられるカード」のため。
     所持していないカードも、未入手として最後に並べる。
     """
-    from src.db import repository as repo
-
     table = upgrade_table(conn)
     caps = (mastery_caps(conn) or {}).get("caps") or {}
     game_max = repo.game_max_level(conn) or 16
@@ -83,63 +138,11 @@ def card_progress(conn, player_tag):
     owned = {r["card_id"]: r for r in repo.player_cards(conn, player_tag)}
     mastery = {r["card_id"]: r for r in repo.player_mastery(conn, player_tag)
                if r["card_id"] is not None}
+    used = _usage_counts(conn, player_tag)
 
-    # 並べ替えの「よく使う順」に使う、このツールが持っている使用回数
-    used = {r["card_id"]: r["n"] for r in conn.execute(
-        "SELECT mc.card_id, COUNT(*) AS n FROM match_cards mc"
-        " JOIN matches m ON m.id = mc.match_id"
-        " WHERE mc.side = 'me' AND m.player_tag = ? GROUP BY mc.card_id",
-        (player_tag,))}
-
-    rows = []
-    for card in cards:
-        have = owned.get(card["card_id"])
-        rarity = (card["rarity"] or "").lower()
-        # ゲーム内の表記に直す。max_level はレアリティごとの上限。
-        level = None
-        if have and have["level"] is not None and have["max_level"]:
-            level = have["level"] + (game_max - have["max_level"])
-
-        count = have["card_count"] if have else 0
-        next_level = level + 1 if level and level < game_max else None
-        need = _required(table, "cards", rarity, next_level) if next_level else None
-        short = max(0, need - count) if need is not None else None
-        # 今の枚数だけで、続けて何レベルまで上げられるか
-        reach, steps = _reachable(table, rarity, level, count, game_max)
-
-        badge = mastery.get(card["card_id"])
-        # 上限は、分かっていればタスクセット由来の値を使う。分からなければAPIの値。
-        mastery_max = caps.get(card["name_en"]) or (badge["max_level"] if badge else None)
-        rows.append({
-            "card_id": card["card_id"],
-            "name": card["name_ja"] or card["name_en"],
-            "name_en": card["name_en"],
-            "rarity": rarity,
-            "elixir_cost": card["elixir_cost"],
-            "icon_path": card["icon_path"],
-            "owned": have is not None,
-            "level": level,
-            "max_level": game_max,
-            "maxed": level == game_max if level else False,
-            "count": count,
-            "next_level": next_level,
-            "need": need,
-            "short": short,
-            "reach_level": reach,
-            "reach_steps": steps,
-            # 不足が無いものは「上げられる」。必要量が分からないものは None。
-            "ready": (short == 0) if short is not None else None,
-            "star_level": have["star_level"] if have else None,
-            "evolution_level": have["evolution_level"] if have else 0,
-            "mastery_level": badge["level"] if badge else None,
-            "mastery_max": mastery_max,
-            # 上限に達していれば、これ以上進められない（公式APIでは判別できない）
-            "mastery_done": bool(badge and mastery_max and badge["level"] >= mastery_max),
-            "mastery_progress": badge["progress"] if badge else None,
-            "mastery_target": badge["target"] if badge else None,
-            "used": used.get(card["card_id"], 0),
-        })
-
+    rows = [_card_row(card, owned.get(card["card_id"]), mastery.get(card["card_id"]),
+                      used.get(card["card_id"], 0), table, caps, game_max)
+            for card in cards]
     return sorted(rows, key=_soon)
 
 
@@ -153,8 +156,6 @@ def _soon(row):
 
 def summary(conn, player_tag, rows):
     """育成状況の要約（画面の上に出す指標）を返す。"""
-    from src.db import repository as repo
-
     owned = [r for r in rows if r["owned"]]
     levels = [r["level"] for r in owned if r["level"]]
     return {

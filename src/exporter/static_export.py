@@ -75,7 +75,7 @@ def copy_assets(out_dir):
     """CSS・アイコン・カード画像を出力先へコピーする。"""
     # manifest.json は公開先に合わせて書き換えるため、ここではコピーしない
     # （write_manifest を参照）。
-    for name in ("style.css", "favicon.svg", "favicon-32.png",
+    for name in ("style.css", "app.js", "favicon.svg", "favicon-32.png",
                  "icon-180.png", "icon-192.png", "icon-512.png"):
         src = STATIC_DIR / name
         if src.exists():
@@ -249,9 +249,82 @@ def write_index(out_dir, default_combo):
     (out_dir / "index.html").write_text(html, encoding="utf-8")
 
 
+def export_combo(client, out_dir, tag, period, mode, deck):
+    """絞り込み1組分の画面をすべて書き出す。書き出した数を返す。"""
+    combo_dir = out_dir / urlmod.combo_key(tag, period, mode, deck)
+    combo_dir.mkdir(parents=True, exist_ok=True)
+
+    # 画面の定義は urls.SCREENS に一元化されている。
+    written, expected = 0, set()
+    for screen, (_endpoint, route, _file) in urlmod.SCREENS.items():
+        for variant in [None] + urlmod.SCREEN_VARIANTS.get(screen, []):
+            url = route + "?" + query_for(tag, period, mode, deck, variant)
+            response = client.get(url)
+            if response.status_code != 200:
+                raise RuntimeError(f"書き出しに失敗しました: {url} -> {response.status_code}")
+
+            filename = urlmod.static_filename(screen, variant)
+            (combo_dir / filename).write_bytes(response.data)
+            expected.add(filename)
+            written += 1
+
+    # 廃止した画面（統合した「環境」など）のページを残さない。
+    for old in combo_dir.glob("*.html"):
+        if old.name not in expected:
+            old.unlink()
+    return written
+
+
+def export_pages(conn, out_dir, combos):
+    """全画面を書き出す。書き出したページ数を返す。
+
+    テンプレートのURL生成を相対パスへ切り替えたうえで、Flaskのテストクライアントで
+    1ページずつ取り出す。切り替えは必ず元へ戻す（戻さないと、以降この処理を同じ
+    プロセスで動かしたときに、サーバー用の画面まで相対パスになってしまう）。
+    """
+    webapp.STATIC_MODE = True
+    client = webapp.app.test_client()
+    webapp.app.config["PROPAGATE_EXCEPTIONS"] = True
+    try:
+        written = sum(export_combo(client, out_dir, *combo) for combo in combos)
+        written += export_match_details(conn, client, out_dir)
+        written += export_card_details(conn, client, out_dir)
+        written += export_spells_page(client, out_dir)
+        written += export_card_list_pages(conn, client, out_dir)
+        return written
+    finally:
+        webapp.STATIC_MODE = False
+
+
+def remove_stale_combos(out_dir, combos):
+    """絞り込みが減ったとき（デッキを使わなくなった等）に古いページを消す。
+
+    残すと公開サイトに存在しないはずの画面が居座り、容量も増え続ける。
+    """
+    valid = {urlmod.combo_key(*combo) for combo in combos}
+    stale = 0
+    for entry in out_dir.iterdir():
+        if entry.is_dir() and entry.name not in RESERVED_DIRS and entry.name not in valid:
+            shutil.rmtree(entry)
+            stale += 1
+    if stale:
+        logging.info("不要になった絞り込みのページを削除しました: %d件", stale)
+    return stale
+
+
+def write_site_files(out_dir):
+    """サイト全体にかかるファイルを書き出す。
+
+    推測困難なURLで守る方式のため、検索エンジンに拾われないようにする。
+    """
+    (DIST_DIR / "robots.txt").write_text(
+        "User-agent: *\nDisallow: /\n", encoding="utf-8")
+    (DIST_DIR / "_headers").write_text(
+        "/*\n  X-Robots-Tag: noindex, nofollow\n", encoding="utf-8")
+
+
 def export(conn, rotate_secret=False, clean=False):
     """静的サイト一式を dist/ へ書き出す。"""
-    config = get_config()
     secret = get_secret(conn, rotate=rotate_secret)
     out_dir = DIST_DIR / secret
 
@@ -264,65 +337,12 @@ def export(conn, rotate_secret=False, clean=False):
         logging.error("書き出す対象がありません。先に収集を実行してください。")
         return None
 
-    # テンプレートのURL生成を相対パスへ切り替える。
-    webapp.STATIC_MODE = True
-    client = webapp.app.test_client()
-    webapp.app.config["PROPAGATE_EXCEPTIONS"] = True
-
-    written = 0
-    try:
-        for tag, period, mode, deck in combos:
-            key = urlmod.combo_key(tag, period, mode, deck)
-            combo_dir = out_dir / key
-            combo_dir.mkdir(parents=True, exist_ok=True)
-
-            # 画面の定義は urls.SCREENS に一元化されている。
-            expected = set()
-            for screen, (_endpoint, route, _file) in urlmod.SCREENS.items():
-                for variant in [None] + urlmod.SCREEN_VARIANTS.get(screen, []):
-                    url = route + "?" + query_for(tag, period, mode, deck, variant)
-                    response = client.get(url)
-                    if response.status_code != 200:
-                        raise RuntimeError(
-                            f"書き出しに失敗しました: {url} -> {response.status_code}")
-
-                    filename = urlmod.static_filename(screen, variant)
-                    (combo_dir / filename).write_bytes(response.data)
-                    expected.add(filename)
-                    written += 1
-
-            # 廃止した画面（統合した「環境」など）のページを残さない。
-            for old in combo_dir.glob("*.html"):
-                if old.name not in expected:
-                    old.unlink()
-        written += export_match_details(conn, client, out_dir)
-        written += export_card_details(conn, client, out_dir)
-        written += export_spells_page(client, out_dir)
-        written += export_card_list_pages(conn, client, out_dir)
-    finally:
-        webapp.STATIC_MODE = False
-
-    # 絞り込みが減ったとき（デッキを使わなくなった等）に古いページを残さない。
-    # 残すと公開サイトに存在しないはずの画面が居座り、容量も増え続ける。
-    valid = {urlmod.combo_key(t, p, m, d) for t, p, m, d in combos}
-    stale = 0
-    for entry in out_dir.iterdir():
-        if entry.is_dir() and entry.name not in RESERVED_DIRS and entry.name not in valid:
-            shutil.rmtree(entry)
-            stale += 1
-    if stale:
-        logging.info("不要になった絞り込みのページを削除しました: %d件", stale)
-
+    written = export_pages(conn, out_dir, combos)
+    remove_stale_combos(out_dir, combos)
     images = copy_assets(out_dir)
+    write_site_files(out_dir)
 
-    # 推測困難なURLで守る方式のため、検索エンジンに拾われないようにする。
-    (DIST_DIR / "robots.txt").write_text(
-        "User-agent: *\nDisallow: /\n", encoding="utf-8")
-    (DIST_DIR / "_headers").write_text(
-        "/*\n  X-Robots-Tag: noindex, nofollow\n", encoding="utf-8")
-
-    default_tag = repo.default_player_tag(conn)
-    default_combo = urlmod.combo_key(default_tag, "all", None, None)
+    default_combo = urlmod.combo_key(repo.default_player_tag(conn), "all", None, None)
     write_manifest(out_dir, default_combo)
     write_index(out_dir, default_combo)
 

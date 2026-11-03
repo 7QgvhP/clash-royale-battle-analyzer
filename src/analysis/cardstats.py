@@ -14,6 +14,7 @@
 import re
 
 from src.api.cardstats import BASE_LEVEL, LEVEL_FACTOR, STAGE_SEP, base_stat
+from src.db import repository as repo
 
 # ゲーム内で表示されるレベルの上限
 GAME_MAX_LEVEL = 16
@@ -409,8 +410,6 @@ def translate_attributes(attributes):
 
 def card_detail(conn, card_id, level=BASE_LEVEL):
     """カード1枚分の表示用データを組み立てる。カードが無ければ None。"""
-    from src.db import repository as repo
-
     card = conn.execute(
         "SELECT card_id, name_en, name_ja, rarity, max_level, elixir_cost,"
         " is_support, icon_path, evo_icon_path"
@@ -453,39 +452,3 @@ def card_detail(conn, card_id, level=BASE_LEVEL):
         "updated_at": (stats or {}).get("updated_at"),
         "has_stats": bool(stats),
     }
-
-
-# カード一覧での、同じコスト内のレア度の並び順。ゲーム内のコレクションと同じく低い順にする。
-RARITY_ORDER = ("common", "rare", "epic", "legendary", "champion")
-
-
-def card_catalog(conn):
-    """カード性能タブの一覧を、コストごとにまとめて返す。
-
-    公式APIのカード一覧はカードIDの順で、画面に並べるための順序を持たない。
-    そのため、コストの低い順、同じコストではレア度の低い順に並べる。
-    コストを持たないカード（鏡など）は最後にまとめる。
-    """
-    rows = conn.execute(
-        "SELECT card_id, name_en, name_ja, rarity, elixir_cost, icon_path"
-        " FROM cards WHERE is_support = 0").fetchall()
-
-    def sort_key(row):
-        rarity = (row["rarity"] or "").lower()
-        rank = RARITY_ORDER.index(rarity) if rarity in RARITY_ORDER else len(RARITY_ORDER)
-        cost = row["elixir_cost"]
-        return (cost is None, cost or 0, rank, row["card_id"])
-
-    groups = []
-    for row in sorted(rows, key=sort_key):
-        cost = row["elixir_cost"]
-        if not groups or groups[-1]["cost"] != cost:
-            groups.append({"cost": cost, "cards": []})
-        groups[-1]["cards"].append({
-            "card_id": row["card_id"],
-            "name": row["name_ja"] or row["name_en"],
-            "name_en": row["name_en"],
-            "rarity": translate_value(row["rarity"]),
-            "icon_path": row["icon_path"],
-        })
-    return groups

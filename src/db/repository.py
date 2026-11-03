@@ -199,11 +199,6 @@ def get_card_stats(conn, card_id):
     return stats
 
 
-def card_stats_count(conn):
-    """性能値を保持しているカードの枚数。"""
-    return conn.execute("SELECT COUNT(*) AS c FROM card_stats").fetchone()["c"]
-
-
 def set_icon_paths(conn, card_id, icon_path, evo_icon_path, hero_icon_path=None):
     conn.execute("UPDATE cards SET icon_path = ?, evo_icon_path = ?, hero_icon_path = ?"
                  " WHERE card_id = ?",

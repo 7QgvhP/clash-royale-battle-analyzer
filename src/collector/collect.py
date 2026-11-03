@@ -417,7 +417,137 @@ def reload_names(conn):
     logging.info("日本語名を反映しました: %d件を更新", updated)
 
 
-def main(argv=None):
+# --- コマンドごとの処理 ---------------------------------------------------
+#
+# main() は「引数の解釈 → 接続 → コマンドの実行 → 後始末」だけを行い、
+# 実際の中身はここに1コマンド1関数で並べる。どのコマンドも
+# (conn, client, config, args) を受け取り、終了コードを返す。
+
+
+def cmd_optimize_images(conn, client, config, args):
+    """保存済みの画像を、表示用に作り直す。"""
+    optimize_images(conn, force=True)
+    return 0
+
+
+def cmd_list_players(conn, client, config, args):
+    """追跡しているプレイヤーを一覧で出す。"""
+    players = repo.list_players(conn, active_only=False)
+    if not players:
+        logging.info("登録されているプレイヤーはいません。")
+    for p in players:
+        mark = "所有者" if p["is_owner"] else "  友人"
+        state = "" if p["is_active"] else "（停止中）"
+        logging.info("%s  %-12s %-16s %5d戦 %s",
+                     mark, p["player_tag"], p["name"] or "-", p["match_count"], state)
+    return 0
+
+
+def cmd_add_player(conn, client, config, args):
+    """プレイヤーを追跡対象に加え、その場で初回の収集まで行う。"""
+    tag = repo.add_player(conn, args.add_player)
+    # タグが実在するか確認し、名前を取得する。
+    try:
+        player = client.get_player(tag)
+    except ApiError as e:
+        repo.remove_player(conn, tag)
+        logging.error("プレイヤー %s を登録できません: %s", tag, e)
+        return 1
+    repo.update_player_profile(conn, tag, player.get("name"),
+                               player.get("trophies"), player.get("bestTrophies"))
+    conn.commit()
+    logging.info("プレイヤーを登録しました: %s（%s）", tag, player.get("name"))
+    collect_player(conn, client, config, tag)
+    repo.recount_decks(conn)
+    regroup(conn, config)
+    return 0
+
+
+def cmd_remove_player(conn, client, config, args):
+    """プレイヤーを追跡対象から外す。蓄積済みの対戦は消さない。"""
+    if repo.remove_player(conn, args.remove_player):
+        logging.info("追跡対象から外しました: %s（蓄積済みの対戦は残ります）",
+                     args.remove_player)
+        return 0
+    logging.error("該当するプレイヤーが見つかりません: %s", args.remove_player)
+    return 1
+
+
+def update_card_reference(conn, client, force_images=False):
+    """カードに関する資料を一通り更新する。
+
+    カードマスタ（公式API）・性能値と必要枚数（Clash Royale Wiki）・
+    マスタリーの上限（Liquipedia）・画像、の順に取り込む。
+    """
+    update_cards(conn, client)
+    update_card_stats(conn)
+    update_upgrade_table(conn)
+    update_mastery_caps(conn)
+    download_images(conn, client, force=force_images)
+    optimize_images(conn, force=force_images)
+
+
+def cmd_init(conn, client, config, args):
+    """初回の立ち上げ。資料を揃えてから収集する。"""
+    update_card_reference(conn, client)
+    collect_battles(conn, client, config)
+    repo.recount_decks(conn)
+    regroup(conn, config)
+    return 0
+
+
+def cmd_update_cards(conn, client, config, args):
+    """カードに関する資料を更新する。"""
+    update_card_reference(conn, client, force_images=args.force_images)
+    return 0
+
+
+def cmd_update_card_stats(conn, client, config, args):
+    """外部サイトから取り込んでいる資料だけを更新する。"""
+    update_card_stats(conn)
+    update_upgrade_table(conn)
+    update_mastery_caps(conn)
+    return 0
+
+
+def cmd_reload_names(conn, client, config, args):
+    """日本語名の対応表を、保存済みのカードへ反映する。"""
+    reload_names(conn)
+    return 0
+
+
+def cmd_download_images(conn, client, config, args):
+    """カード画像を取得し、表示用に作り直す。"""
+    download_images(conn, client, force=args.force_images)
+    optimize_images(conn, force=args.force_images)
+    return 0
+
+
+def cmd_collect(conn, client, config, args):
+    """既定の動作。対戦を収集し、デッキをまとめ直す。"""
+    collect_battles(conn, client, config)
+    repo.recount_decks(conn)
+    regroup(conn, config)
+    return 0
+
+
+# 引数と処理の対応。上から順に見て、最初に指定されていたものを実行する。
+# 指定が無ければ既定の収集を行う。
+COMMANDS = (
+    ("optimize_images", cmd_optimize_images),
+    ("list_players", cmd_list_players),
+    ("add_player", cmd_add_player),
+    ("remove_player", cmd_remove_player),
+    ("init", cmd_init),
+    ("update_cards", cmd_update_cards),
+    ("update_card_stats", cmd_update_card_stats),
+    ("reload_names", cmd_reload_names),
+    ("download_images", cmd_download_images),
+)
+
+
+def build_parser():
+    """コマンドラインの引数を定義する。"""
     parser = argparse.ArgumentParser(description="クラロワ対戦履歴の収集")
     parser.add_argument("--init", action="store_true",
                         help="DBを初期化し、カードマスタ・画像を取得して初回収集を行う")
@@ -434,7 +564,11 @@ def main(argv=None):
                         help="プレイヤーを追跡対象から外す（蓄積済みの対戦は消さない）")
     parser.add_argument("--list-players", action="store_true", help="登録済みプレイヤーを一覧表示する")
     parser.add_argument("--verbose", action="store_true", help="詳細なログを出力する")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
 
     setup_logging(args.verbose)
     config = get_config()
@@ -451,90 +585,8 @@ def main(argv=None):
 
     try:
         client = ClashRoyaleClient(config)
-
-        if args.optimize_images:
-            optimize_images(conn, force=True)
-            return 0
-
-        if args.list_players:
-            players = repo.list_players(conn, active_only=False)
-            if not players:
-                logging.info("登録されているプレイヤーはいません。")
-            for p in players:
-                mark = "所有者" if p["is_owner"] else "  友人"
-                state = "" if p["is_active"] else "（停止中）"
-                logging.info("%s  %-12s %-16s %5d戦 %s",
-                             mark, p["player_tag"], p["name"] or "-",
-                             p["match_count"], state)
-            return 0
-
-        if args.add_player:
-            tag = repo.add_player(conn, args.add_player)
-            # タグが実在するか確認し、名前を取得する。
-            try:
-                player = client.get_player(tag)
-            except ApiError as e:
-                repo.remove_player(conn, tag)
-                logging.error("プレイヤー %s を登録できません: %s", tag, e)
-                return 1
-            repo.update_player_profile(conn, tag, player.get("name"),
-                                       player.get("trophies"), player.get("bestTrophies"))
-            conn.commit()
-            logging.info("プレイヤーを登録しました: %s（%s）", tag, player.get("name"))
-            collect_player(conn, client, config, tag)
-            repo.recount_decks(conn)
-            regroup(conn, config)
-            return 0
-
-        if args.remove_player:
-            if repo.remove_player(conn, args.remove_player):
-                logging.info("追跡対象から外しました: %s（蓄積済みの対戦は残ります）",
-                             args.remove_player)
-                return 0
-            logging.error("該当するプレイヤーが見つかりません: %s", args.remove_player)
-            return 1
-
-        if args.init:
-            update_cards(conn, client)
-            update_card_stats(conn)
-            update_upgrade_table(conn)
-            update_mastery_caps(conn)
-            download_images(conn, client)
-            optimize_images(conn)
-            collect_battles(conn, client, config)
-            repo.recount_decks(conn)
-            regroup(conn, config)
-            return 0
-
-        if args.update_cards:
-            update_cards(conn, client)
-            update_card_stats(conn)
-            update_upgrade_table(conn)
-            update_mastery_caps(conn)
-            download_images(conn, client, force=args.force_images)
-            optimize_images(conn, force=args.force_images)
-            return 0
-
-        if args.update_card_stats:
-            update_card_stats(conn)
-            update_upgrade_table(conn)
-            update_mastery_caps(conn)
-            return 0
-
-        if args.reload_names:
-            reload_names(conn)
-            return 0
-
-        if args.download_images:
-            download_images(conn, client, force=args.force_images)
-            optimize_images(conn, force=args.force_images)
-            return 0
-
-        collect_battles(conn, client, config)
-        repo.recount_decks(conn)
-        regroup(conn, config)
-        return 0
-
+        run = next((fn for name, fn in COMMANDS if getattr(args, name)), cmd_collect)
+        return run(conn, client, config, args)
     except ApiError as e:
         logging.error("APIエラー: %s", e)
         repo.log_collection(conn, "error", error=str(e))

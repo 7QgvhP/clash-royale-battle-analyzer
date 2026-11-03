@@ -21,11 +21,11 @@ wikitext 上では性能値が2か所に分かれている。
      「基準値 × 1.1^(レベル-11)」で各レベルを算出している。
      `golem_hp_11` のように接頭辞が付くものは、そのカードが出す別ユニットを指す。
 """
-import json
 import re
 import time
 import urllib.parse
-import urllib.request
+
+from src.api import mediawiki
 
 API = "https://clashroyale.fandom.com/api.php"
 PAGE_URL = "https://clashroyale.fandom.com/wiki/"
@@ -58,7 +58,7 @@ STAGE_SEP = "#"
 
 def _request(titles):
     """複数ページの wikitext をまとめて取得する。"""
-    params = urllib.parse.urlencode({
+    return mediawiki.get_json(API, {
         "action": "query",
         "prop": "revisions",
         "rvprop": "content|ids|timestamp",
@@ -66,10 +66,7 @@ def _request(titles):
         "format": "json",
         "redirects": "1",
         "titles": "|".join(titles),
-    })
-    req = urllib.request.Request(f"{API}?{params}", headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
-        return json.loads(response.read())["query"]
+    }, USER_AGENT, TIMEOUT)["query"]
 
 
 def fetch_pages(names):

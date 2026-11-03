@@ -15,11 +15,9 @@ Clash Royale Wiki（CC BY-SA）の「Cards」ページを情報源とする。
 カード1枚だけが入っており、これはカード自体を手に入れるための1枚を指す。
 したがって「次のレベルに必要な量」は、現在のレベル+1 の行を読めばよい。
 """
-import json
 import re
-import urllib.parse
-import urllib.request
 
+from src.api import mediawiki
 from src.api.cardstats import API, LICENSE, PAGE_URL, SOURCE_NAME, TIMEOUT, USER_AGENT
 
 # 表を載せているページ
@@ -35,16 +33,8 @@ RARITIES = ["common", "rare", "epic", "legendary", "champion"]
 
 def _wikitext(title):
     """ページの wikitext を取得する。"""
-    url = API + "?" + urllib.parse.urlencode({
-        "action": "query", "prop": "revisions", "rvprop": "content|ids",
-        "rvslots": "main", "titles": title, "format": "json", "formatversion": 2})
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        page = json.load(response)["query"]["pages"][0]
-    revisions = page.get("revisions") or []
-    if not revisions:
-        return None, None
-    return revisions[0]["slots"]["main"]["content"], revisions[0].get("revid")
+    pages = mediawiki.query_pages(API, [title], USER_AGENT, TIMEOUT, formatversion=2)["pages"]
+    return mediawiki.page_content(pages[0] if pages else None)
 
 
 def _parse_table(text, heading):

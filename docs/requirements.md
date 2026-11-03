@@ -1,6 +1,6 @@
 # clash-royale-battle-analyzer 要件定義書
 
-- **バージョン**: v1.26.0
+- **バージョン**: v1.27.0
 - **作成日**: 2026-09-05
 - **対象**: クラッシュロワイヤルの対戦履歴を蓄積し、勝率および苦手カード・苦手デッキを分析するローカルツール
 
@@ -632,7 +632,7 @@ clash-royale-battle-analyzer/
 │   ├── web/
 │   │   ├── app.py            # Flaskアプリ
 │   │   ├── templates/
-│   │   └── static/
+│   │   └── static/           # style.css / app.js（画面共通の処理）/ アイコン
 │   └── data/
 │       └── card_names_ja.json  # 英語名→日本語名 対応表
 ├── data/

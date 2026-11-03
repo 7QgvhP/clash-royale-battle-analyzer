@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """時系列の推移（勝率・トロフィー）と対戦履歴の取得。"""
+from src.analysis.decks import card_icon, match_evolutions, representative_cards
 from src.analysis.stats import from_row
 
 # APIのバトル日時は "YYYYMMDDThhmmss.000Z" 形式。
@@ -119,8 +120,6 @@ def recent_matches(conn, filters, limit=50, offset=0, opp_card_id=None):
         LIMIT ? OFFSET ?
     """, params + [limit, offset]).fetchall()
 
-    from src.analysis.decks import match_evolutions, representative_cards
-
     matches = []
     for r in rows:
         matches.append({
@@ -155,8 +154,6 @@ def opponent_card_choices(conn, filters, recent_limit=None):
     recent_limit を渡すと、直近のその件数の対戦に出てきたカードだけにする。
     静的サイトは直近分しか載せないため、選んでも1件も出ないカードを並べないようにする。
     """
-    from src.analysis.decks import card_icon
-
     where, params = filters.where()
     limit_sql = ""
     if recent_limit is not None:

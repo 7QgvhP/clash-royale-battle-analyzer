@@ -19,13 +19,11 @@ Liquipedia のAPI利用規約（https://liquipedia.net/api-terms-of-use）に従
   - リクエストは2秒に1回まで（action=parse は使わない）
 を守る。内容は CC BY-SA 3.0 のため、画面に出典を表示すること。
 """
-import gzip
-import json
 import logging
 import re
 import time
-import urllib.parse
-import urllib.request
+
+from src.api import mediawiki
 
 API = "https://liquipedia.net/clashroyale/api.php"
 PAGE_URL = "https://liquipedia.net/clashroyale/Card_Mastery"
@@ -52,16 +50,7 @@ TITLE_ALIASES = {
 
 def _request(titles):
     """複数ページの wikitext をまとめて取得する。"""
-    url = API + "?" + urllib.parse.urlencode({
-        "action": "query", "prop": "revisions", "rvprop": "content", "rvslots": "main",
-        "titles": "|".join(titles), "format": "json", "formatversion": 2})
-    request = urllib.request.Request(
-        url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"})
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        data = response.read()
-        if response.headers.get("Content-Encoding") == "gzip":
-            data = gzip.decompress(data)
-    return json.loads(data)["query"]["pages"]
+    return mediawiki.query_pages(API, titles, USER_AGENT, TIMEOUT, formatversion=2)["pages"]
 
 
 def _count_sets(text):
@@ -88,8 +77,7 @@ def fetch_task_sets(name_list):
             name = titles.get(page["title"])
             if name is None:
                 continue
-            revisions = page.get("revisions") or []
-            text = revisions[0]["slots"]["main"]["content"] if revisions else None
+            text, _revid = mediawiki.page_content(page)
             sets = _count_sets(text) if text else 0
             if sets:
                 out[name] = sets
