@@ -339,9 +339,14 @@
 (function () {
   var root = document.documentElement;
   var header = document.querySelector('.header');
+  var nav = document.querySelector('.nav');
 
   function measure() {
-    if (header) root.style.setProperty('--header-h', header.offsetHeight + 'px');
+    // --header-h はヘッダの高さ（ナビを留める位置）。
+    // --stick-h はヘッダ＋ナビの高さ（表の見出しを留める位置）。
+    var headerH = header ? header.offsetHeight : 0;
+    root.style.setProperty('--header-h', headerH + 'px');
+    root.style.setProperty('--stick-h', (headerH + (nav ? nav.offsetHeight : 0)) + 'px');
     document.querySelectorAll('.table-wrap').forEach(function (wrap) {
       var table = wrap.querySelector('table');
       if (!table) return;

@@ -186,7 +186,12 @@ a { color: inherit; text-decoration: none; }
 .nav {
   display: flex; gap: 2px 22px; flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
-  margin: 20px 0 16px;
+  margin: 0 0 16px; padding-top: 20px;
+  /* スクロールしてもタブが見えるよう、ヘッダの直下に留める。
+     上の余白は margin ではなく padding で取る。margin だとその隙間から
+     下の内容が透けて見えてしまうため。 */
+  position: sticky; top: var(--header-h, 0px); z-index: 15;
+  background: var(--bg);
 }
 .nav a {
   padding: 10px 0; font-size: 13px; font-weight: 500;
@@ -326,7 +331,8 @@ th[aria-sort] { color: var(--text); }
 
 /* 横幅に収まる表だけ、見出しをヘッダの直下に固定する（判定は base.html） */
 .table-wrap.fits { overflow: visible; }
-.table-wrap.fits thead th { position: sticky; top: var(--header-h, 0px); z-index: 5; }
+/* 表の見出しは、ヘッダとナビの両方の下に収まる位置で留める */
+.table-wrap.fits thead th { position: sticky; top: var(--stick-h, 0px); z-index: 5; }
 tbody tr:first-child { border-top: none; }
 tbody tr:hover { background: var(--surface-hover); }
 td.num, th.num { text-align: right; white-space: nowrap; }
@@ -468,7 +474,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   .header-inner { padding: 10px 12px; gap: 8px; }
   .player-name { font-size: 15px; }
 
-  .nav { margin: 14px 0 12px; gap: 2px 18px; }
+  .nav { margin: 0 0 12px; padding-top: 14px; gap: 2px 18px; }
   .nav a { padding: 10px 0; font-size: 13px; }
   .nav a:active { color: var(--text); }
 
