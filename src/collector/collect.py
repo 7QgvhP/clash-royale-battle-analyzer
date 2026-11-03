@@ -353,8 +353,9 @@ def refresh_card_assets(conn, client):
     try:
         update_cards(conn, client)
         saved = download_images(conn, client) or 0
-        if saved:
-            optimize_images(conn)
+        # 最適化は毎回行う。download_images がカードの画像の参照先を元のPNGに
+        # 書き戻すため、ここを通さないと、配信用のWebPを指さなくなってしまう。
+        optimize_images(conn)
         return saved
     except Exception as e:
         logging.warning("カードマスタ・画像の更新に失敗しました: %s", e)
