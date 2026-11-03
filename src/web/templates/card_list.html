@@ -17,7 +17,7 @@
   <div class="metric">
     <div class="metric-label">上げられる</div>
     <div class="metric-value">{{ progress_summary.ready }}</div>
-    <div class="metric-sub">枚数が足りているカード</div>
+    <div class="metric-sub">枚数が足りているカード（今の枚数で合計 +{{ progress_summary.steps }}段）</div>
   </div>
   <div class="metric">
     <div class="metric-label">最大レベル</div>
@@ -58,6 +58,7 @@
         data-level="{{ r.level if r.level is not none else 99 }}"
         data-used="{{ r.used }}"
         data-mastery="{{ r.mastery_level if r.mastery_level is not none else -1 }}"
+        data-steps="{{ r.reach_steps }}"
         data-owned="{{ 1 if r.owned else 0 }}"
         class="{% if not r.owned %}unowned{% endif %}">
       <td data-label="カード">
@@ -85,7 +86,12 @@
       <td class="num" data-label="Lv">
         {% if r.level %}
           <span class="level-value">{{ r.level }}</span>
-          {% if r.maxed %}<div class="card-meta">最大</div>{% endif %}
+          {% if r.maxed %}
+            <div class="card-meta">最大</div>
+          {% elif r.reach_steps %}
+            {# 今の所持枚数だけで、続けて上げられるところまでの到達レベル #}
+            <div class="card-meta ok">→ {{ r.reach_level }}（+{{ r.reach_steps }}）</div>
+          {% endif %}
         {% else %}--{% endif %}
       </td>
       <td class="num" data-label="所持">{{ "{:,}".format(r.count) }}</td>
@@ -129,6 +135,10 @@
   <strong style="font-weight:600">次のLvに必要</strong> はレベルを1つ上げるのに要る枚数で、
   不足が無いものには「上げられる」を付けている。必要ゴールドは所持ゴールドと比べていない
   （公式APIが所持ゴールドを返さないため）。<br>
+  レベルの下の <strong style="font-weight:600">→ 13（+2）</strong> は、
+  <strong style="font-weight:600">今の所持枚数だけで続けて上げたときの到達レベル</strong>。
+  1レベル上げるごとに枚数を使い、残りで次も上げられるなら続ける、という数え方をしている。
+  ゴールドは考えていないため、実際にはゴールドが足りずそこまで上げられないことがある。<br>
   <strong style="font-weight:600">マスタリー</strong> はゲーム内の「カードタスク」の段階。
   課題の内容と、段階の中でどこまで進んでいるかは公式APIから取得できないため、段階だけを示す。<br>
   {% if progress_summary.updated_at %}
@@ -167,6 +177,9 @@
     soon: function (a, b) { return num(a, 'soon') - num(b, 'soon'); },
     level: function (a, b) {
       return num(a, 'level') - num(b, 'level') || num(b, 'used') - num(a, 'used');
+    },
+    steps: function (a, b) {
+      return num(b, 'steps') - num(a, 'steps') || num(b, 'used') - num(a, 'used');
     },
     used: function (a, b) { return num(b, 'used') - num(a, 'used'); },
     mastery: function (a, b) {
