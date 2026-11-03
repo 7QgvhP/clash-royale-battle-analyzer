@@ -305,6 +305,7 @@ def card_list_view():
             "rarity_labels": cardstats_analysis.RARITY_LABELS_JA,
             "game_max_level": repo.game_max_level(conn) or 16,
             "upgrade_source": (progress_analysis.upgrade_table(conn) or {}).get("source"),
+            "mastery_source": (progress_analysis.mastery_caps(conn) or {}).get("source"),
         })
         return render_template("card_list.html", **ctx)
     finally:

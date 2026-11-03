@@ -106,9 +106,10 @@
           <span class="card-meta">—</span>
         {% else %}
           {# 公式APIが返す progress は段階と同じ値、target は常にその+1で、段階の
-             中での進み具合は分からない。そのため段階だけを出す。 #}
-          {{ r.mastery_level }}<span class="card-meta">/{{ r.mastery_max }}</span>
-          {% if not r.mastery_target %}<div class="card-meta ok">達成</div>{% endif %}
+             中での進み具合は分からない。そのため段階だけを出す。
+             上限は、タスクセットの数から求めた値（公式APIは一律10を返す）。 #}
+          {{ r.mastery_level }}<span class="card-meta">/{{ r.mastery_max or "?" }}</span>
+          {% if r.mastery_done %}<div class="card-meta ok">達成</div>{% endif %}
         {% endif %}
       </td>
     </tr>
@@ -128,16 +129,25 @@
   1レベル上げるごとに枚数を使い、残りで次も上げられるなら続ける、という数え方をしている。
   ゴールドは考えていないため、実際にはゴールドが足りずそこまで上げられないことがある。<br>
   <strong style="font-weight:600">マスタリー</strong> はゲーム内の「カードタスク」の段階。
-  課題の内容と、段階の中でどこまで進んでいるかは公式APIから取得できないため、段階だけを示す。<br>
+  課題の内容と、段階の中でどこまで進んでいるかは公式APIから取得できないため、段階だけを示す。
+  上限はカードによって違う（タスクが3セットあるカードは10、2セットのカードは7で打ち止め）。
+  公式APIはどのカードも10と返すため、上限はタスクセットの数から求めている。<br>
   {% if progress_summary.updated_at %}
     カードの枚数とレベルは {{ progress_summary.updated_at }}（UTC）時点のもの。収集のたびに更新する。<br>
   {% endif %}
-  レベルアップに必要な枚数・ゴールドの出典:
+  レベルアップに必要な枚数の出典:
   {% if upgrade_source %}
     <a href="{{ upgrade_source.url }}" target="_blank" rel="noopener">{{ upgrade_source.name }}</a>
     （{{ upgrade_source.license }}）
   {% else %}
     未取得（<code>python -m src.collector.collect --update-cards</code> で取得する）
+  {% endif %}<br>
+  マスタリーのタスクセット数の出典:
+  {% if mastery_source %}
+    <a href="{{ mastery_source.url }}" target="_blank" rel="noopener">{{ mastery_source.name }}</a>
+    （{{ mastery_source.license }}）
+  {% else %}
+    未取得（同上）
   {% endif %}
 </div>
 {% else %}

@@ -16,6 +16,16 @@ import json
 
 
 
+def mastery_caps(conn):
+    """カードごとのマスタリーの段階の上限を返す。未取得なら None。
+
+    公式APIは一律で 10 を返すが、タスクセットが2つしかないカードは段階7で
+    打ち止めになる。実際の上限は Liquipedia 由来の値を使う（収集時に保存）。
+    """
+    saved = repo_get_meta(conn, "mastery_caps")
+    return json.loads(saved) if saved else None
+
+
 def upgrade_table(conn):
     """レベルアップに必要な枚数・ゴールドの表を返す。未取得なら None。"""
     saved = repo_get_meta(conn, "upgrade_table")
@@ -64,6 +74,7 @@ def card_progress(conn, player_tag):
     from src.db import repository as repo
 
     table = upgrade_table(conn)
+    caps = (mastery_caps(conn) or {}).get("caps") or {}
     game_max = repo.game_max_level(conn) or 16
 
     cards = conn.execute(
@@ -97,6 +108,8 @@ def card_progress(conn, player_tag):
         reach, steps = _reachable(table, rarity, level, count, game_max)
 
         badge = mastery.get(card["card_id"])
+        # 上限は、分かっていればタスクセット由来の値を使う。分からなければAPIの値。
+        mastery_max = caps.get(card["name_en"]) or (badge["max_level"] if badge else None)
         rows.append({
             "card_id": card["card_id"],
             "name": card["name_ja"] or card["name_en"],
@@ -119,7 +132,9 @@ def card_progress(conn, player_tag):
             "star_level": have["star_level"] if have else None,
             "evolution_level": have["evolution_level"] if have else 0,
             "mastery_level": badge["level"] if badge else None,
-            "mastery_max": badge["max_level"] if badge else None,
+            "mastery_max": mastery_max,
+            # 上限に達していれば、これ以上進められない（公式APIでは判別できない）
+            "mastery_done": bool(badge and mastery_max and badge["level"] >= mastery_max),
             "mastery_progress": badge["progress"] if badge else None,
             "mastery_target": badge["target"] if badge else None,
             "used": used.get(card["card_id"], 0),
@@ -149,8 +164,7 @@ def summary(conn, player_tag, rows):
         "maxed": sum(1 for r in owned if r["maxed"]),
         "ready": sum(1 for r in owned if r["ready"]),
         "steps": sum(r["reach_steps"] for r in owned),
-        "mastery_done": sum(1 for r in rows
-                            if r["mastery_level"] and r["mastery_level"] == r["mastery_max"]),
+        "mastery_done": sum(1 for r in rows if r["mastery_done"]),
         "mastery_known": sum(1 for r in rows if r["mastery_level"] is not None),
         "updated_at": repo.player_cards_updated_at(conn, player_tag),
     }

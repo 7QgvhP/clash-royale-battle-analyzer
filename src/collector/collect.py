@@ -10,6 +10,7 @@ import logging
 import sys
 
 from src.api import cardstats as cardstats_api
+from src.api import mastery as mastery_api
 from src.api import upgrades as upgrades_api
 from src.api.client import ApiError, ClashRoyaleClient
 from src.api.models import parse_battle
@@ -135,6 +136,32 @@ def update_upgrade_table(conn):
     repo.set_meta(conn, "upgrade_table", json.dumps(table, ensure_ascii=False))
     conn.commit()
     logging.info("レベルアップに必要な量を保存しました（出典 %s）", table["source"]["url"])
+    return True
+
+
+def update_mastery_caps(conn):
+    """マスタリーの段階の上限（カードごと）を取得して保存する。
+
+    公式APIは一律で 10 を返すが、実際の上限はタスクセットの数で決まる。
+    セット数は Liquipedia（CC BY-SA 3.0）が公開しているため、そこから取り込む。
+    取得できなかった場合は、前回保存した内容をそのまま使う。
+    """
+    names = [r["name_en"] for r in
+             conn.execute("SELECT name_en FROM cards WHERE is_support = 0 ORDER BY name_en")]
+    if not names:
+        return False
+    try:
+        data = mastery_api.fetch_mastery_caps(names)
+    except Exception as e:
+        logging.warning("マスタリーの上限を取得できませんでした: %s", e)
+        return False
+    if data is None:
+        logging.warning("マスタリーの上限を取得できませんでした。前回の内容を使います。")
+        return False
+    repo.set_meta(conn, "mastery_caps", json.dumps(data, ensure_ascii=False))
+    conn.commit()
+    logging.info("マスタリーの上限を保存しました: %d枚（出典 %s）",
+                 len(data["caps"]), data["source"]["url"])
     return True
 
 
@@ -442,6 +469,7 @@ def main(argv=None):
             update_cards(conn, client)
             update_card_stats(conn)
             update_upgrade_table(conn)
+            update_mastery_caps(conn)
             download_images(conn, client)
             optimize_images(conn)
             collect_battles(conn, client, config)
@@ -453,6 +481,7 @@ def main(argv=None):
             update_cards(conn, client)
             update_card_stats(conn)
             update_upgrade_table(conn)
+            update_mastery_caps(conn)
             download_images(conn, client, force=args.force_images)
             optimize_images(conn, force=args.force_images)
             return 0
@@ -460,6 +489,7 @@ def main(argv=None):
         if args.update_card_stats:
             update_card_stats(conn)
             update_upgrade_table(conn)
+            update_mastery_caps(conn)
             return 0
 
         if args.reload_names:
