@@ -238,6 +238,7 @@ def download_images(conn, client, force=False):
         repo.set_icon_paths(conn, card["card_id"], paths[""], paths["_evo"], paths["_hero"])
     conn.commit()
     logging.info("カード画像を保存しました: 新規 %d件（保存先 %s）", saved, CARD_IMAGE_DIR)
+    return saved
 
 
 # カードの表示サイズは最大44px。高解像度画面を考慮しても132pxあれば足りる。
@@ -278,6 +279,7 @@ def optimize_images(conn, force=False):
     total = sum(f.stat().st_size for f in CARD_WEB_DIR.glob("*.webp"))
     logging.info("カード画像を最適化しました: 変換 %d件 / 合計 %.1f MB",
                  converted, total / 1024 / 1024)
+    return converted
 
 
 def collect_player(conn, client, config, player_tag):
@@ -336,6 +338,29 @@ def collect_player(conn, client, config, player_tag):
     return fetched, new_count
 
 
+def refresh_card_assets(conn, client):
+    """カードマスタと画像の、足りない分だけを取り込む。
+
+    収集のたびに呼ぶ。画像は既にあるものを再取得しないので、通常は
+    カードマスタの取得（API 1回）だけで終わる。次の2つを拾うために行う。
+
+      - 新しいカードが追加されたとき（マスタに無いと画像のURLも分からない）
+      - 公式側に画像が後から置かれたとき（エレクトロウィザードのヒーロー版は、
+        対応した時点では404で取得できず、後日取得できるようになった）
+
+    ここでの失敗は収集全体を止めない。画像が無くても、通常の絵柄で表示できる。
+    """
+    try:
+        update_cards(conn, client)
+        saved = download_images(conn, client) or 0
+        if saved:
+            optimize_images(conn)
+        return saved
+    except Exception as e:
+        logging.warning("カードマスタ・画像の更新に失敗しました: %s", e)
+        return 0
+
+
 def collect_battles(conn, client, config):
     """登録されている全プレイヤーの対戦を収集する。
 
@@ -346,6 +371,9 @@ def collect_battles(conn, client, config):
         # 未登録なら .env のプレイヤーを所有者として登録する。
         repo.add_player(conn, config.player_tag, is_owner=True)
         players = repo.list_players(conn)
+
+    # 新しいカードや、後から公開された画像を取りこぼさないようにする
+    refresh_card_assets(conn, client)
 
     total_new = 0
     failed = []
