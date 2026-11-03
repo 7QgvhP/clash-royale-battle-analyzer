@@ -180,16 +180,33 @@ def export_spells_page(client, out_dir):
     return 1
 
 
-def export_card_list_page(client, out_dir):
-    """カード性能の一覧を書き出す。絞り込みに依存しないため1ファイルで済む。"""
+def export_card_list_pages(conn, client, out_dir):
+    """カードの育成状況を書き出す。
+
+    中身はプレイヤーごとに変わるが、期間やモードでは変わらないため、
+    プレイヤー1人につき1ページで足りる。
+    """
     list_dir = out_dir / "card-list"
     list_dir.mkdir(parents=True, exist_ok=True)
-    response = client.get("/card-list")
-    if response.status_code != 200:
-        raise RuntimeError(f"カード性能の一覧の書き出しに失敗しました: {response.status_code}")
-    (list_dir / "index.html").write_bytes(response.data)
-    logging.info("カード性能の一覧を書き出しました")
-    return 1
+
+    written, expected = 0, set()
+    for player in repo.list_players(conn):
+        tag = player["player_tag"]
+        name = urlmod.player_slug(tag) + ".html"
+        response = client.get("/card-list?player=" + tag.lstrip("#"))
+        if response.status_code != 200:
+            raise RuntimeError(f"カード育成の書き出しに失敗しました: {response.status_code}")
+        (list_dir / name).write_bytes(response.data)
+        expected.add(name)
+        written += 1
+
+    # 追跡をやめたプレイヤーのページを残さない
+    for old in list_dir.glob("*.html"):
+        if old.name not in expected:
+            old.unlink()
+
+    logging.info("カード育成を書き出しました: %d人分", written)
+    return written
 
 
 def write_manifest(out_dir, default_combo):
@@ -281,7 +298,7 @@ def export(conn, rotate_secret=False, clean=False):
         written += export_match_details(conn, client, out_dir)
         written += export_card_details(conn, client, out_dir)
         written += export_spells_page(client, out_dir)
-        written += export_card_list_page(client, out_dir)
+        written += export_card_list_pages(conn, client, out_dir)
     finally:
         webapp.STATIC_MODE = False
 

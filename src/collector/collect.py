@@ -10,10 +10,11 @@ import logging
 import sys
 
 from src.api import cardstats as cardstats_api
+from src.api import upgrades as upgrades_api
 from src.api.client import ApiError, ClashRoyaleClient
 from src.api.models import parse_battle
 from src.config import (CARD_IMAGE_DIR, CARD_NAMES_PATH, CARD_STATS_MANUAL_PATH,
-                        CARD_WEB_DIR, LOG_DIR, get_config)
+                        CARD_WEB_DIR, LOG_DIR, MASTERY_NAMES_PATH, get_config)
 from src.db import repository as repo
 
 
@@ -120,6 +121,73 @@ def update_card_stats(conn):
     return missing
 
 
+def update_upgrade_table(conn):
+    """レベルアップに必要な枚数・ゴールドの表を取得して保存する。
+
+    公式APIは所持枚数しか返さないため、必要量は Clash Royale Wiki から得る。
+    取得できなかった場合は、前回保存した内容をそのまま使う（育成状況の画面は
+    必要量が無くても、レベルと所持枚数までは表示できる）。
+    """
+    table = upgrades_api.fetch_upgrade_table()
+    if table is None:
+        logging.warning("レベルアップに必要な量を取得できませんでした。前回の内容を使います。")
+        return False
+    repo.set_meta(conn, "upgrade_table", json.dumps(table, ensure_ascii=False))
+    conn.commit()
+    logging.info("レベルアップに必要な量を保存しました（出典 %s）", table["source"]["url"])
+    return True
+
+
+def load_mastery_names():
+    """マスタリーのバッジ名→カード英語名の対応表を読み込む。"""
+    if not MASTERY_NAMES_PATH.exists():
+        return {}
+    with MASTERY_NAMES_PATH.open(encoding="utf-8") as f:
+        return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+
+
+def _mastery_rows(conn, player):
+    """プレイヤー情報の badges から、カードマスタリーの行を組み立てる。
+
+    バッジ名はゲーム内部の呼び名で、カードIDを持たない。英語名と機械的に
+    一致するものは自動で、一致しないものは対応表で結び付ける。
+    """
+    cards = {c["name_en"]: c["card_id"] for c in
+             conn.execute("SELECT card_id, name_en FROM cards")}
+    simplified = {"".join(ch for ch in name.lower() if ch.isalnum()): card_id
+                  for name, card_id in cards.items()}
+    manual = load_mastery_names()
+
+    rows, unknown = [], []
+    for badge in player.get("badges") or []:
+        name = badge.get("name") or ""
+        if not name.startswith("Mastery"):
+            continue
+        key = name[len("Mastery"):]
+        card_id = cards.get(manual.get(key, ""))
+        if card_id is None:
+            card_id = simplified.get("".join(ch for ch in key.lower() if ch.isalnum()))
+        if card_id is None:
+            unknown.append(key)
+        rows.append({"badge_name": name, "card_id": card_id, "level": badge.get("level"),
+                     "max_level": badge.get("maxLevel"), "progress": badge.get("progress"),
+                     "target": badge.get("target")})
+    return rows, unknown
+
+
+def save_player_progress(conn, player_tag, player):
+    """プレイヤー情報から、カードの所持状況とマスタリーを保存する。"""
+    repo.replace_player_cards(conn, player_tag, player.get("cards") or [])
+    rows, unknown = _mastery_rows(conn, player)
+    repo.replace_player_mastery(conn, player_tag, rows)
+    conn.commit()
+    if unknown:
+        logging.warning("[%s] カードと結び付かないマスタリー: %s",
+                        player_tag, "、".join(unknown))
+    logging.info("[%s] 育成状況を保存しました: カード %d枚 / マスタリー %d件",
+                 player_tag, len(player.get("cards") or []), len(rows))
+
+
 def download_images(conn, client, force=False):
     """カード画像をローカルへ保存する。既に存在するものは再取得しない。"""
     CARD_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -202,6 +270,8 @@ def collect_player(conn, client, config, player_tag):
         repo.update_player_profile(conn, player_tag, player.get("name"),
                                    player.get("trophies"), player.get("bestTrophies"))
         conn.commit()
+        # 同じ応答にカードの所持状況とマスタリーが含まれる。育成状況の画面で使う。
+        save_player_progress(conn, player_tag, player)
     except Exception as e:
         logging.warning("[%s] プロフィールの取得に失敗しました: %s", player_tag, e)
 
@@ -371,6 +441,7 @@ def main(argv=None):
         if args.init:
             update_cards(conn, client)
             update_card_stats(conn)
+            update_upgrade_table(conn)
             download_images(conn, client)
             optimize_images(conn)
             collect_battles(conn, client, config)
@@ -381,12 +452,14 @@ def main(argv=None):
         if args.update_cards:
             update_cards(conn, client)
             update_card_stats(conn)
+            update_upgrade_table(conn)
             download_images(conn, client, force=args.force_images)
             optimize_images(conn, force=args.force_images)
             return 0
 
         if args.update_card_stats:
             update_card_stats(conn)
+            update_upgrade_table(conn)
             return 0
 
         if args.reload_names:

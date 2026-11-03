@@ -41,6 +41,11 @@ def _slug(value, fallback="all"):
     return str(value).lstrip("#").replace("/", "-")
 
 
+def player_slug(player_tag):
+    """プレイヤーごとのファイル名に使う文字列を返す（タグの # を除いたもの）。"""
+    return _slug(player_tag, "index")
+
+
 def combo_key(player_tag, period, mode, deck_group_id):
     """絞り込みの組み合わせを表すディレクトリ名を返す。"""
     return "{}_{}_{}_{}".format(
@@ -147,14 +152,16 @@ def spells_url(static_mode, filters=None):
 
 
 def card_list_url(static_mode, filters=None):
-    """カード性能の一覧へのURLを返す。
+    """カードの育成状況へのURLを返す。
 
-    絞り込みに依存しないため、組み合わせごとには作らず
-    <secret>/card-list/index.html に1つだけ置く。見ているプレイヤーは引き継ぐ。
+    中身はプレイヤーごとに変わるが、期間やモードでは変わらない。そのため
+    組み合わせごとには作らず、<secret>/card-list/<プレイヤー>.html に
+    プレイヤー1人につき1つだけ置く。期間などは ?from= で引き継ぐ。
     """
     if not static_mode:
         return url_for("card_list_view", **filter_params(filters)) if filters             else url_for("card_list_view")
-    return f"../card-list/index.html{_carry(filters)}"
+    player = player_slug(filters.player_tag if filters else None)
+    return f"../card-list/{player}.html{_carry(filters)}"
 
 
 def asset_url(path, static_mode):

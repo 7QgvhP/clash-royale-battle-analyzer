@@ -77,7 +77,7 @@
 <div class="wrap">
 
   <nav class="nav">
-    {% set nav_items = [('summary', 'サマリー'), ('cardlist', 'カード性能'),
+    {% set nav_items = [('summary', 'サマリー'), ('cardlist', 'カード育成'),
                         ('cards', '相手カード'),
                         ('decks', '自デッキ'),
                         ('levels', 'レベル分析'), ('history', '対戦履歴'),
@@ -155,7 +155,10 @@
       if (/^[^_]+_[^_]+_[^_]+_[^_]+$/.test(m[1])) {
         // 絞り込みのページへ戻るリンク。来たときの組み合わせに差し替える。
         a.setAttribute("href", "../" + from + "/" + m[2]);
-      } else if (m[1] === "spells" || m[1] === "card-list" || m[1] === "card") {
+      } else if (m[1] === "card-list") {
+        // カード育成はプレイヤーごとに1ページあるため、ファイル名ごと差し替える。
+        a.setAttribute("href", "../card-list/" + player + ".html?from=" + from);
+      } else if (m[1] === "spells" || m[1] === "card") {
         // 共通ページ同士のリンクでは、来たプレイヤーをそのまま引き継ぐ。
         a.setAttribute("href", "../" + m[1] + "/" + m[2] + "?from=" + from);
       }

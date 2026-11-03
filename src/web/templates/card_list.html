@@ -1,35 +1,150 @@
 {% extends "base.html" %}
-{% block title %}カード性能 | クラロワ対戦分析{% endblock %}
+{% block title %}カード育成 | クラロワ対戦分析{% endblock %}
 
-{# カードの性能は絞り込みに依存しないため、共通のフィルタ行は出さない #}
+{# 育成状況はプレイヤーだけで決まり、期間やモードでは変わらないため、
+   共通のフィルタ行は出さない。プレイヤーはヘッダの切替で選ぶ。 #}
 {% block filters %}{% endblock %}
 
 {% block content %}
 
-{% if groups %}
-  {% for g in groups %}
-  <h2>{% if g.cost is not none %}コスト {{ g.cost }}{% else %}コストなし{% endif %}
-    <span class="card-meta">{{ g.cards | length }}枚</span></h2>
-  <div class="catalog">
-    {% for c in g.cards %}
-    <a class="catalog-cell" href="{{ card_url(c.card_id) }}" title="{{ c.name }}">
-      {% if c.icon_path %}
-        <img class="card-img-lg" src="{{ asset_url('cards/' ~ c.icon_path) }}" alt="{{ c.name }}"
-             loading="lazy">
-      {% else %}
-        <span class="card-img placeholder"></span>
-      {% endif %}
-      <span class="card-cell-name">{{ c.name }}</span>
-    </a>
-    {% endfor %}
+{% if rows %}
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-label">平均レベル</div>
+    <div class="metric-value">{{ progress_summary.average_level or "--" }}</div>
+    <div class="metric-sub">所持 {{ progress_summary.owned }} / {{ progress_summary.total }}枚</div>
   </div>
-  {% endfor %}
+  <div class="metric">
+    <div class="metric-label">上げられる</div>
+    <div class="metric-value">{{ progress_summary.ready }}</div>
+    <div class="metric-sub">枚数が足りているカード</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">最大レベル</div>
+    <div class="metric-value">{{ progress_summary.maxed }}</div>
+    <div class="metric-sub">Lv{{ game_max_level }}に到達</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">マスタリー達成</div>
+    <div class="metric-value">{{ progress_summary.mastery_done }}</div>
+    <div class="metric-sub">記録のあるカード {{ progress_summary.mastery_known }}枚</div>
+  </div>
+</div>
 
-  <div class="note">
-    カードを選ぶと、そのカードの性能値（HP・ダメージなど）を表示する。<br>
-    公式APIのカード一覧は表示用の並び順を持たないため、コストの低い順に、
-    同じコストの中ではレア度の低い順（ノーマル → レア → スーパーレア → ウルトラレア → チャンピオン）に並べている。
-  </div>
+<h2>カードごとの育成状況
+  <span id="sort-buttons">
+    {% for key, label in sort_labels.items() %}
+      <button type="button" class="seg-link {% if key == sort %}on{% endif %}"
+              data-sort="{{ key }}">{{ label }}</button>
+    {% endfor %}
+  </span>
+</h2>
+
+<div class="table-wrap">
+<table class="progress-table">
+  <thead>
+    <tr>
+      <th>カード</th>
+      <th class="num">Lv</th>
+      <th class="num">所持</th>
+      <th class="num">次のLvに必要</th>
+      <th class="num">必要ゴールド</th>
+      <th class="num">マスタリー</th>
+    </tr>
+  </thead>
+  <tbody id="progress-body">
+    {% for r in rows %}
+    <tr data-soon="{{ loop.index }}"
+        data-level="{{ r.level if r.level is not none else 99 }}"
+        data-used="{{ r.used }}"
+        data-mastery="{{ r.mastery_level if r.mastery_level is not none else -1 }}"
+        data-mastery-remain="{{ (r.mastery_target or 0) - (r.mastery_progress or 0) }}"
+        data-owned="{{ 1 if r.owned else 0 }}"
+        class="{% if not r.owned %}unowned{% endif %}">
+      <td data-label="カード">
+        <div class="progress-card">
+          <a class="card-link" href="{{ card_url(r.card_id) }}">
+            {% if r.icon_path %}
+              <img class="card-img" src="{{ asset_url('cards/' ~ r.icon_path) }}"
+                   alt="{{ r.name }}" loading="lazy">
+            {% else %}
+              <span class="card-img placeholder"></span>
+            {% endif %}
+          </a>
+          <div>
+            <span class="card-name">{{ r.name }}</span>
+            {% if r.ready %}<span class="badge ready">上げられる</span>{% endif %}
+            {% if not r.owned %}<span class="badge">未入手</span>{% endif %}
+            <div class="card-meta">
+              {{ rarity_labels.get(r.rarity, r.rarity) }}
+              {% if r.elixir_cost is not none %}・コスト {{ r.elixir_cost }}{% endif %}
+              {% if r.used %}・使用 {{ r.used }}回{% endif %}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td class="num" data-label="Lv">
+        {% if r.level %}
+          <span class="level-value">{{ r.level }}</span>
+          {% if r.maxed %}<div class="card-meta">最大</div>{% endif %}
+        {% else %}--{% endif %}
+      </td>
+      <td class="num" data-label="所持">{{ "{:,}".format(r.count) }}</td>
+      <td class="num" data-label="次のLvに必要">
+        {% if r.maxed %}
+          <span class="card-meta">—</span>
+        {% elif r.need is none %}
+          <span class="card-meta">不明</span>
+        {% else %}
+          {{ "{:,}".format(r.need) }}
+          {% if r.short %}
+            <div class="card-meta short">あと {{ "{:,}".format(r.short) }}枚</div>
+          {% else %}
+            <div class="card-meta ok">枚数は足りている</div>
+          {% endif %}
+        {% endif %}
+      </td>
+      <td class="num" data-label="必要ゴールド">
+        {% if r.maxed or r.gold is none %}<span class="card-meta">—</span>
+        {% else %}{{ "{:,}".format(r.gold) }}{% endif %}
+      </td>
+      <td class="num" data-label="マスタリー">
+        {% if r.mastery_level is none %}
+          <span class="card-meta">—</span>
+        {% else %}
+          {{ r.mastery_level }}<span class="card-meta">/{{ r.mastery_max }}</span>
+          {% if r.mastery_target %}
+            <div class="card-meta">次まで {{ r.mastery_target - r.mastery_progress }}</div>
+          {% else %}
+            <div class="card-meta ok">達成</div>
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  カードを選ぶと、そのカードの性能値（HP・ダメージなど）を表示する。<br>
+  <strong style="font-weight:600">所持</strong> は今持っている枚数、
+  <strong style="font-weight:600">次のLvに必要</strong> はレベルを1つ上げるのに要る枚数で、
+  不足が無いものには「上げられる」を付けている。必要ゴールドは所持ゴールドと比べていない
+  （公式APIが所持ゴールドを返さないため）。<br>
+  <strong style="font-weight:600">マスタリー</strong> はゲーム内の「カードタスク」の段階と、
+  次の段階までの残り。課題の内容までは公式APIから取得できない。<br>
+  {% if progress_summary.updated_at %}
+    カードの枚数とレベルは {{ progress_summary.updated_at }}（UTC）時点のもの。収集のたびに更新する。<br>
+  {% endif %}
+  レベルアップに必要な枚数・ゴールドの出典:
+  {% if upgrade_source %}
+    <a href="{{ upgrade_source.url }}" target="_blank" rel="noopener">{{ upgrade_source.name }}</a>
+    （{{ upgrade_source.license }}）
+  {% else %}
+    未取得（<code>python -m src.collector.collect --update-cards</code> で取得する）
+  {% endif %}
+</div>
 {% else %}
   <div class="empty">
     カードマスタをまだ取得していません。<br>
@@ -37,4 +152,52 @@
   </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 並べ替えは画面の中だけで行う。静的サイトでも動き、ページを増やさずに済む。
+(function () {
+  var body = document.getElementById('progress-body');
+  var buttons = document.getElementById('sort-buttons');
+  if (!body || !buttons) return;
+  var rows = [].slice.call(body.querySelectorAll('tr'));
+
+  function num(tr, name) { return parseInt(tr.getAttribute('data-' + name), 10) || 0; }
+
+  var keys = {
+    // サーバー側で並べた順。あと少しで上がる順。
+    soon: function (a, b) { return num(a, 'soon') - num(b, 'soon'); },
+    level: function (a, b) {
+      return num(a, 'level') - num(b, 'level') || num(b, 'used') - num(a, 'used');
+    },
+    used: function (a, b) { return num(b, 'used') - num(a, 'used'); },
+    mastery: function (a, b) {
+      return num(b, 'mastery') - num(a, 'mastery')
+        || num(a, 'mastery-remain') - num(b, 'mastery-remain');
+    }
+  };
+
+  buttons.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-sort]');
+    if (!btn) return;
+    var key = btn.getAttribute('data-sort');
+    if (!keys[key]) return;
+    rows.slice().sort(keys[key]).forEach(function (tr) { body.appendChild(tr); });
+    [].forEach.call(buttons.querySelectorAll('button'), function (b) {
+      b.classList.toggle('on', b === btn);
+    });
+    try { localStorage.setItem('progressSort', key); } catch (err) {}
+  });
+
+  // 前回選んだ並び順を覚えておく
+  try {
+    var saved = localStorage.getItem('progressSort');
+    if (saved && keys[saved] && saved !== '{{ sort }}') {
+      var target = buttons.querySelector('button[data-sort="' + saved + '"]');
+      if (target) target.click();
+    }
+  } catch (err) {}
+})();
+</script>
 {% endblock %}

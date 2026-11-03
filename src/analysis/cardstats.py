@@ -100,6 +100,10 @@ VALUE_LABELS = {
     "melee": "近接",
 }
 
+# レア度の日本語表記。育成状況の画面など、値の翻訳を通さずに使う場所向け。
+RARITY_LABELS_JA = {key: VALUE_LABELS[key] for key in
+                    ("common", "rare", "epic", "legendary", "champion")}
+
 # 値の中に現れる英単語。移動速度や射程は「Medium (60)」のような複合になるため、
 # 単語ごとに置き換える。
 WORD_LABELS = {

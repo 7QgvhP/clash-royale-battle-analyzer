@@ -21,6 +21,8 @@ CARD_WEB_DIR = DATA_DIR / "card_images_web"
 CARD_NAMES_PATH = ROOT / "src" / "data" / "card_names_ja.json"
 # 自動取得できなかったカード性能値を補うファイル
 CARD_STATS_MANUAL_PATH = ROOT / "src" / "data" / "card_stats_manual.json"
+# カードマスタリーのバッジ名→カード英語名の対応表（自動で一致しないものだけ）
+MASTERY_NAMES_PATH = ROOT / "src" / "data" / "mastery_names.json"
 
 PROXY_BASE = "https://proxy.royaleapi.dev/v1"
 DIRECT_BASE = "https://api.clashroyale.com/v1"

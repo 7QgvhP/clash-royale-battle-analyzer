@@ -98,6 +98,35 @@ CREATE TABLE IF NOT EXISTS card_stats (
     FOREIGN KEY (card_id) REFERENCES cards (card_id)
 );
 
+-- プレイヤーごとのカード所持状況（レベル・所持枚数）
+-- 公式APIのプレイヤー情報に含まれる。育成状況の画面で使う。
+-- level はレアリティ基準のため、ゲーム内表記は level + (最大レベル - max_level)。
+CREATE TABLE IF NOT EXISTS player_cards (
+    player_tag      TEXT    NOT NULL,
+    card_id         INTEGER NOT NULL,
+    level           INTEGER,
+    max_level       INTEGER,
+    card_count      INTEGER NOT NULL DEFAULT 0,
+    star_level      INTEGER,
+    evolution_level INTEGER NOT NULL DEFAULT 0,
+    updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (player_tag, card_id)
+);
+
+-- カードマスタリー（ゲーム内の「カードタスク」）の進み具合
+-- 公式APIでは badges の Mastery〜 として返る。カードIDは名前から対応付ける。
+CREATE TABLE IF NOT EXISTS player_mastery (
+    player_tag TEXT    NOT NULL,
+    badge_name TEXT    NOT NULL,
+    card_id    INTEGER,
+    level      INTEGER,
+    max_level  INTEGER,
+    progress   INTEGER,
+    target     INTEGER,
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (player_tag, badge_name)
+);
+
 -- 自分の使用デッキ
 CREATE TABLE IF NOT EXISTS decks (
     player_tag  TEXT    NOT NULL,

@@ -11,6 +11,7 @@ from src.analysis import cardstats as cardstats_analysis
 from src.analysis import decks as decks_analysis
 from src.analysis import detail as detail_analysis
 from src.analysis import levels as levels_analysis
+from src.analysis import progress as progress_analysis
 from src.analysis import spells as spells_analysis
 from src.analysis import stats as stats_analysis
 from src.analysis import trends as trends_analysis
@@ -286,16 +287,30 @@ def card_view(card_id):
 
 @app.route("/card-list")
 def card_list_view():
-    """カード性能の一覧。絞り込みに依存しないため @screen は使わない。"""
+    """カードの育成状況。期間やモードでは変わらないため @screen は使わない。
+
+    中身はプレイヤーごとに変わるが、絞り込み（期間・モード・自デッキ）には
+    依存しないため、プレイヤー1人につき1ページで足りる。
+    """
     conn = get_conn()
     try:
-        # 画面の中身はプレイヤーに依存しないが、ヘッダとナビは共通のものを使うため、
-        # どのプレイヤーの画面から来たかをリクエストから引き継ぐ。
         filters = Filters.from_request(request.args, repo.default_player_tag(conn))
+        sort = request.args.get("sort", progress_analysis.DEFAULT_SORT)
+        if sort not in progress_analysis.SORT_LABELS:
+            sort = progress_analysis.DEFAULT_SORT
+        rows = progress_analysis.card_progress(conn, filters.player_tag, sort)
         ctx = base_context(conn, filters)
-        # プレイヤー切替はサマリーへ向ける。この画面はプレイヤーに依存しない。
-        ctx.update({"active": "summary", "nav_active": "cardlist",
-                    "groups": cardstats_analysis.card_catalog(conn)})
+        # プレイヤー切替はサマリーへ向ける。この画面には期間などの絞り込みが無い。
+        ctx.update({
+            "active": "summary", "nav_active": "cardlist",
+            "rows": rows,
+            "progress_summary": progress_analysis.summary(conn, filters.player_tag, rows),
+            "sort": sort,
+            "sort_labels": progress_analysis.SORT_LABELS,
+            "rarity_labels": cardstats_analysis.RARITY_LABELS_JA,
+            "game_max_level": repo.game_max_level(conn) or 16,
+            "upgrade_source": (progress_analysis.upgrade_table(conn) or {}).get("source"),
+        })
         return render_template("card_list.html", **ctx)
     finally:
         conn.close()

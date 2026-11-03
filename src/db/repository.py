@@ -210,6 +210,52 @@ def set_icon_paths(conn, card_id, icon_path, evo_icon_path, hero_icon_path=None)
                  (icon_path, evo_icon_path, hero_icon_path, card_id))
 
 
+# --- 育成状況 -------------------------------------------------------------
+
+def replace_player_cards(conn, player_tag, cards):
+    """プレイヤーのカード所持状況を入れ替える。
+
+    APIが返す現在の状態そのものなので、履歴は持たず毎回差し替える。
+    手放したカードが残らないよう、先に全件消してから入れ直す。
+    """
+    conn.execute("DELETE FROM player_cards WHERE player_tag = ?", (player_tag,))
+    conn.executemany(
+        "INSERT INTO player_cards (player_tag, card_id, level, max_level, card_count,"
+        " star_level, evolution_level, updated_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+        [(player_tag, c["id"], c.get("level"), c.get("maxLevel"), c.get("count") or 0,
+          c.get("starLevel"), c.get("evolutionLevel") or 0) for c in cards])
+
+
+def replace_player_mastery(conn, player_tag, rows):
+    """プレイヤーのカードマスタリーを入れ替える。rows は辞書の並び。"""
+    conn.execute("DELETE FROM player_mastery WHERE player_tag = ?", (player_tag,))
+    conn.executemany(
+        "INSERT INTO player_mastery (player_tag, badge_name, card_id, level, max_level,"
+        " progress, target, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+        [(player_tag, r["badge_name"], r.get("card_id"), r.get("level"), r.get("max_level"),
+          r.get("progress"), r.get("target")) for r in rows])
+
+
+def player_cards(conn, player_tag):
+    """プレイヤーのカード所持状況を返す。"""
+    return conn.execute(
+        "SELECT * FROM player_cards WHERE player_tag = ?", (player_tag,)).fetchall()
+
+
+def player_mastery(conn, player_tag):
+    """プレイヤーのカードマスタリーを返す。"""
+    return conn.execute(
+        "SELECT * FROM player_mastery WHERE player_tag = ?", (player_tag,)).fetchall()
+
+
+def player_cards_updated_at(conn, player_tag):
+    """カード所持状況を最後に保存した日時。未取得なら None。"""
+    row = conn.execute("SELECT MAX(updated_at) AS t FROM player_cards"
+                       " WHERE player_tag = ?", (player_tag,)).fetchone()
+    return row["t"] if row else None
+
+
 # --- 対戦 -----------------------------------------------------------------
 
 def insert_match(conn, match, my_cards, opp_cards):

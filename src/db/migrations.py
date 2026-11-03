@@ -7,7 +7,7 @@
 import logging
 
 # 現在のスキーマ版。schema.sql を変更したら上げる。
-CURRENT_VERSION = 4
+CURRENT_VERSION = 5
 
 
 def get_version(conn):
@@ -24,6 +24,8 @@ def get_version(conn):
     # 版が未記録の場合は、実際の列の有無で判断する。テーブルの存在では
     # 判定しない。移行が途中で失敗すると一部のテーブルだけが作られ、
     # 未完了の状態を「移行済み」と誤認するため。
+    if _table_exists(conn, "player_cards"):
+        return 5
     if _has_column(conn, "cards", "hero_icon_path"):
         return 4
     if _table_exists(conn, "card_stats"):
@@ -158,10 +160,46 @@ def migrate_3_to_4(conn):
     logging.info("マイグレーション完了: cards にヒーロー画像の列を追加しました")
 
 
+def migrate_4_to_5(conn):
+    """カードの育成状況（所持枚数・マスタリー）の保存先を追加する。
+
+    中身は次回の収集で埋まる。既存データには触れない。
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS player_cards (
+            player_tag      TEXT    NOT NULL,
+            card_id         INTEGER NOT NULL,
+            level           INTEGER,
+            max_level       INTEGER,
+            card_count      INTEGER NOT NULL DEFAULT 0,
+            star_level      INTEGER,
+            evolution_level INTEGER NOT NULL DEFAULT 0,
+            updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (player_tag, card_id)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS player_mastery (
+            player_tag TEXT    NOT NULL,
+            badge_name TEXT    NOT NULL,
+            card_id    INTEGER,
+            level      INTEGER,
+            max_level  INTEGER,
+            progress   INTEGER,
+            target     INTEGER,
+            updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (player_tag, badge_name)
+        )
+    """)
+    conn.commit()
+    logging.info("マイグレーション完了: 育成状況のテーブルを作成しました")
+
+
 MIGRATIONS = {
     2: migrate_1_to_2,
     3: migrate_2_to_3,
     4: migrate_3_to_4,
+    5: migrate_4_to_5,
 }
 
 
