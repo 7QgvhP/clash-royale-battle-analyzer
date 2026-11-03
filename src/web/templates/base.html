@@ -44,10 +44,13 @@
 
     <div class="player">
       {% if players | length > 1 %}
-        {# 選択肢の値をそのまま遷移先URLにする。サーバー無しでも動く #}
+        {# 選択肢の値をそのまま遷移先URLにする。サーバー無しでも動く。
+           行き先は常にサマリー。開いていたタブのまま切り替えると、画面によって
+           挙動が変わって分かりにくいうえ、自デッキの絞り込みは持ち主ごとに別物で、
+           そのまま持ち越すと存在しないページを指してしまうため。 #}
         <select class="player-switch" onchange="location.href=this.value">
           {% for p in players %}
-            <option value="{{ page_url(active, player=p.player_tag) }}"
+            <option value="{{ page_url('summary', player=p.player_tag, deck=None) }}"
                     {% if p.player_tag == player_tag %}selected{% endif %}>
               {{ p.name or p.player_tag }}
             </option>
@@ -145,7 +148,6 @@
   // 「プレイヤー_期間_モード_デッキ」の4つ組だけを受け付ける
   if (!/^[^_/]+_[^_/]+_[^_/]+_[^_/]+$/.test(from)) return;
   var player = from.split("_")[0];
-  var rest = from.split("_").slice(1).join("_");
 
   // 呪文の表のように、あとから作られるリンクもあるため、何度でも呼べるようにする。
   function apply() {
@@ -167,13 +169,16 @@
   window.applyFromCombo = apply;
   apply();
 
-  // プレイヤーの選択も、来たときの状態に合わせる。
+  // プレイヤーの選択も、来たときの状態に合わせる。行き先は常にサマリーで、
+  // 自デッキの絞り込みは持ち主が変わると意味を持たないため外す。
   var select = document.querySelector(".player-switch");
   if (select) {
+    var parts = from.split("_");            // プレイヤー_期間_モード_デッキ
+    var keep = parts[1] + "_" + parts[2] + "_all";
     [].forEach.call(select.options, function (o) {
       var m = o.value.match(/^\.\.\/([^_/]+)_[^/]*\/(.+)$/);
       if (!m) return;
-      o.value = "../" + m[1] + "_" + rest + "/" + m[2];
+      o.value = "../" + m[1] + "_" + keep + "/summary.html";
       o.selected = m[1] === player;
     });
   }
