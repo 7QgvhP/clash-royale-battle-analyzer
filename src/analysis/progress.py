@@ -130,9 +130,9 @@ def _sorted(rows, sort):
     def mastery(r):
         if r["mastery_level"] is None:
             return (1, 0, 0)
-        # 段階が高い順、同じ段階なら次の段階に近い順
-        remain = ((r["mastery_target"] or 0) - (r["mastery_progress"] or 0))
-        return (0, -r["mastery_level"], remain)
+        # 段階が高い順。段階の中での進み具合は公式APIから分からないため、
+        # 同じ段階の中はよく使う順にする。
+        return (0, -r["mastery_level"], -r["used"])
 
     key = {"soon": soon, "level": level, "used": used, "mastery": mastery}.get(sort, soon)
     return sorted(rows, key=key)

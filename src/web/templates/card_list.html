@@ -58,7 +58,6 @@
         data-level="{{ r.level if r.level is not none else 99 }}"
         data-used="{{ r.used }}"
         data-mastery="{{ r.mastery_level if r.mastery_level is not none else -1 }}"
-        data-mastery-remain="{{ (r.mastery_target or 0) - (r.mastery_progress or 0) }}"
         data-owned="{{ 1 if r.owned else 0 }}"
         class="{% if not r.owned %}unowned{% endif %}">
       <td data-label="カード">
@@ -112,12 +111,10 @@
         {% if r.mastery_level is none %}
           <span class="card-meta">—</span>
         {% else %}
+          {# 公式APIが返す progress は段階と同じ値、target は常にその+1で、段階の
+             中での進み具合は分からない。そのため段階だけを出す。 #}
           {{ r.mastery_level }}<span class="card-meta">/{{ r.mastery_max }}</span>
-          {% if r.mastery_target %}
-            <div class="card-meta">次まで {{ r.mastery_target - r.mastery_progress }}</div>
-          {% else %}
-            <div class="card-meta ok">達成</div>
-          {% endif %}
+          {% if not r.mastery_target %}<div class="card-meta ok">達成</div>{% endif %}
         {% endif %}
       </td>
     </tr>
@@ -132,8 +129,8 @@
   <strong style="font-weight:600">次のLvに必要</strong> はレベルを1つ上げるのに要る枚数で、
   不足が無いものには「上げられる」を付けている。必要ゴールドは所持ゴールドと比べていない
   （公式APIが所持ゴールドを返さないため）。<br>
-  <strong style="font-weight:600">マスタリー</strong> はゲーム内の「カードタスク」の段階と、
-  次の段階までの残り。課題の内容までは公式APIから取得できない。<br>
+  <strong style="font-weight:600">マスタリー</strong> はゲーム内の「カードタスク」の段階。
+  課題の内容と、段階の中でどこまで進んでいるかは公式APIから取得できないため、段階だけを示す。<br>
   {% if progress_summary.updated_at %}
     カードの枚数とレベルは {{ progress_summary.updated_at }}（UTC）時点のもの。収集のたびに更新する。<br>
   {% endif %}
@@ -173,8 +170,7 @@
     },
     used: function (a, b) { return num(b, 'used') - num(a, 'used'); },
     mastery: function (a, b) {
-      return num(b, 'mastery') - num(a, 'mastery')
-        || num(a, 'mastery-remain') - num(b, 'mastery-remain');
+      return num(b, 'mastery') - num(a, 'mastery') || num(b, 'used') - num(a, 'used');
     }
   };
 
