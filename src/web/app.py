@@ -295,18 +295,13 @@ def card_list_view():
     conn = get_conn()
     try:
         filters = Filters.from_request(request.args, repo.default_player_tag(conn))
-        sort = request.args.get("sort", progress_analysis.DEFAULT_SORT)
-        if sort not in progress_analysis.SORT_LABELS:
-            sort = progress_analysis.DEFAULT_SORT
-        rows = progress_analysis.card_progress(conn, filters.player_tag, sort)
+        rows = progress_analysis.card_progress(conn, filters.player_tag)
         ctx = base_context(conn, filters)
         # プレイヤー切替はサマリーへ向ける。この画面には期間などの絞り込みが無い。
         ctx.update({
             "active": "summary", "nav_active": "cardlist",
             "rows": rows,
             "progress_summary": progress_analysis.summary(conn, filters.player_tag, rows),
-            "sort": sort,
-            "sort_labels": progress_analysis.SORT_LABELS,
             "rarity_labels": cardstats_analysis.RARITY_LABELS_JA,
             "game_max_level": repo.game_max_level(conn) or 16,
             "upgrade_source": (progress_analysis.upgrade_table(conn) or {}).get("source"),

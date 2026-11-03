@@ -10,10 +10,11 @@
 <div class="table-wrap">
 {# スマートフォンでは行の組み方を変える（style.css の .deck-table）。
    data-label は、見出し行を使わないときに各値の上へ添える項目名。 #}
-<table class="deck-table">
+<table class="deck-table sortable">
   <thead>
     <tr>
-      <th>デッキ</th>
+      {# デッキの列は画像と内訳のため、並べ替えの対象にしない #}
+      <th data-nosort>デッキ</th>
       <th class="num">対戦</th>
       <th class="num">勝率</th>
       <th class="num">平均Lv</th>
@@ -56,9 +57,13 @@
         {% endif %}
       </td>
       <td class="num" data-label="対戦">{{ row.total }}</td>
-      <td class="num" data-label="勝率">{{ m.rate_cell(row) }}</td>
-      <td class="num" data-label="平均Lv">{{ row.avg_level or "--" }}</td>
-      <td class="num" data-label="最終使用">{{ row.last_used | jst }}</td>
+      <td class="num" data-label="勝率"
+          data-sort-value="{{ row.rate if row.rate is not none }}">{{ m.rate_cell(row) }}</td>
+      <td class="num" data-label="平均Lv"
+          data-sort-value="{{ row.avg_level if row.avg_level }}">{{ row.avg_level or "--" }}</td>
+      {# 表示は「09/16 01:24」だが、並べ替えには元の日時をそのまま使う #}
+      <td class="num" data-label="最終使用"
+          data-sort-value="{{ row.last_used }}">{{ row.last_used | jst }}</td>
     </tr>
     {% endfor %}
   </tbody>

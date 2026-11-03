@@ -32,19 +32,14 @@
 </div>
 
 <h2>カードごとの育成状況
-  <span id="sort-buttons">
-    {% for key, label in sort_labels.items() %}
-      <button type="button" class="seg-link {% if key == sort %}on{% endif %}"
-              data-sort="{{ key }}">{{ label }}</button>
-    {% endfor %}
-  </span>
+  <span class="card-meta">既定は、あと少しで上がる順。見出しを押すと並べ替わる</span>
 </h2>
 
 <div class="table-wrap">
-<table class="progress-table">
+<table class="progress-table sortable">
   <thead>
     <tr>
-      <th>カード</th>
+      <th class="sort-text">カード</th>
       <th class="num">Lv</th>
       <th class="num">所持</th>
       <th class="num">次のLvに必要</th>
@@ -53,13 +48,7 @@
   </thead>
   <tbody id="progress-body">
     {% for r in rows %}
-    <tr data-soon="{{ loop.index }}"
-        data-level="{{ r.level if r.level is not none else 99 }}"
-        data-used="{{ r.used }}"
-        data-mastery="{{ r.mastery_level if r.mastery_level is not none else -1 }}"
-        data-reach="{{ r.reach_level if r.reach_level is not none else 0 }}"
-        data-owned="{{ 1 if r.owned else 0 }}"
-        class="{% if not r.owned %}unowned{% endif %}">
+    <tr class="{% if not r.owned %}unowned{% endif %}">
       <td data-label="カード">
         <div class="progress-card">
           <a class="card-link" href="{{ card_url(r.card_id) }}">
@@ -82,7 +71,9 @@
           </div>
         </div>
       </td>
-      <td class="num" data-label="Lv">
+      {# 同じレベルの中では、所持枚数で到達できるレベルが高いほうを先に置く #}
+      <td class="num" data-label="Lv"
+          data-sort-value="{{ '%d.%02d' | format(r.level, r.reach_level or 0) if r.level }}">
         {% if r.level %}
           <span class="level-value">{{ r.level }}</span>
           {% if r.maxed %}
@@ -93,8 +84,11 @@
           {% endif %}
         {% else %}--{% endif %}
       </td>
-      <td class="num" data-label="所持">{{ "{:,}".format(r.count) }}</td>
-      <td class="num" data-label="次のLvに必要">
+      <td class="num" data-label="所持" data-sort-value="{{ r.count }}">{{ "{:,}".format(r.count) }}</td>
+      {# 「あと何枚か」で並べ替えたいので、不足枚数を値にする。
+         最大レベルや必要量が不明なものは値を持たせず、常に最後へ送る #}
+      <td class="num" data-label="次のLvに必要"
+          data-sort-value="{{ r.short if r.short is not none and not r.maxed }}">
         {% if r.maxed %}
           <span class="card-meta">—</span>
         {% elif r.need is none %}
@@ -108,7 +102,8 @@
           {% endif %}
         {% endif %}
       </td>
-      <td class="num" data-label="マスタリー">
+      <td class="num" data-label="マスタリー"
+          data-sort-value="{{ r.mastery_level if r.mastery_level is not none }}">
         {% if r.mastery_level is none %}
           <span class="card-meta">—</span>
         {% else %}
@@ -155,52 +150,4 @@
 
 {% endblock %}
 
-{% block scripts %}
-<script>
-// 並べ替えは画面の中だけで行う。静的サイトでも動き、ページを増やさずに済む。
-(function () {
-  var body = document.getElementById('progress-body');
-  var buttons = document.getElementById('sort-buttons');
-  if (!body || !buttons) return;
-  var rows = [].slice.call(body.querySelectorAll('tr'));
 
-  function num(tr, name) { return parseInt(tr.getAttribute('data-' + name), 10) || 0; }
-
-  var keys = {
-    // サーバー側で並べた順。あと少しで上がる順。
-    soon: function (a, b) { return num(a, 'soon') - num(b, 'soon'); },
-    level: function (a, b) {
-      return num(a, 'level') - num(b, 'level') || num(b, 'used') - num(a, 'used');
-    },
-    reach: function (a, b) {
-      return num(b, 'reach') - num(a, 'reach') || num(b, 'used') - num(a, 'used');
-    },
-    used: function (a, b) { return num(b, 'used') - num(a, 'used'); },
-    mastery: function (a, b) {
-      return num(b, 'mastery') - num(a, 'mastery') || num(b, 'used') - num(a, 'used');
-    }
-  };
-
-  buttons.addEventListener('click', function (e) {
-    var btn = e.target.closest('button[data-sort]');
-    if (!btn) return;
-    var key = btn.getAttribute('data-sort');
-    if (!keys[key]) return;
-    rows.slice().sort(keys[key]).forEach(function (tr) { body.appendChild(tr); });
-    [].forEach.call(buttons.querySelectorAll('button'), function (b) {
-      b.classList.toggle('on', b === btn);
-    });
-    try { localStorage.setItem('progressSort', key); } catch (err) {}
-  });
-
-  // 前回選んだ並び順を覚えておく
-  try {
-    var saved = localStorage.getItem('progressSort');
-    if (saved && keys[saved] && saved !== '{{ sort }}') {
-      var target = buttons.querySelector('button[data-sort="' + saved + '"]');
-      if (target) target.click();
-    }
-  } catch (err) {}
-})();
-</script>
-{% endblock %}

@@ -14,15 +14,6 @@
 """
 import json
 
-# 画面に出す並び順の種類。キーはURLの値、値は画面のラベル。
-SORT_LABELS = {
-    "soon": "あと少し順",
-    "reach": "上げられる最大Lv順",
-    "level": "レベルの低い順",
-    "used": "よく使う順",
-    "mastery": "マスタリーの進み順",
-}
-DEFAULT_SORT = "soon"
 
 
 def upgrade_table(conn):
@@ -63,9 +54,11 @@ def _reachable(table, rarity, level, count, game_max):
     return reached, reached - level
 
 
-def card_progress(conn, player_tag, sort=DEFAULT_SORT):
+def card_progress(conn, player_tag):
     """プレイヤーのカードごとの育成状況を返す。
 
+    並びは「あと少しで上がる順」。画面では見出しを押して並べ替えられるが、
+    最初に開いたときに知りたいのは「いま上げられるカード」のため。
     所持していないカードも、未入手として最後に並べる。
     """
     from src.db import repository as repo
@@ -132,39 +125,15 @@ def card_progress(conn, player_tag, sort=DEFAULT_SORT):
             "used": used.get(card["card_id"], 0),
         })
 
-    return _sorted(rows, sort)
+    return sorted(rows, key=_soon)
 
 
-def _sorted(rows, sort):
-    """指定された並び順に並べ替える。未入手・最大レベルは常に後ろへ送る。"""
-    def soon(r):
-        # 上げられるものを先頭に、次いで不足の少ない順。
-        if not r["owned"] or r["maxed"] or r["short"] is None:
-            return (2, 0, -r["used"])
-        return (0 if r["short"] == 0 else 1, r["short"], -r["used"])
-
-    def reach(r):
-        # 所持枚数で到達できるレベルの高い順。同じなら よく使う順。
-        if not r["owned"]:
-            return (1, 0, 0)
-        return (0, -(r["reach_level"] or 0), -r["used"])
-
-    def level(r):
-        return (2, 0, 0) if not r["owned"] else (0, r["level"] or 0, -r["used"])
-
-    def used(r):
-        return (-r["used"], r["name"])
-
-    def mastery(r):
-        if r["mastery_level"] is None:
-            return (1, 0, 0)
-        # 段階が高い順。段階の中での進み具合は公式APIから分からないため、
-        # 同じ段階の中はよく使う順にする。
-        return (0, -r["mastery_level"], -r["used"])
-
-    key = {"soon": soon, "reach": reach, "level": level, "used": used,
-           "mastery": mastery}.get(sort, soon)
-    return sorted(rows, key=key)
+def _soon(row):
+    """あと少しで上がる順の並び。未入手・最大レベルは後ろへ送る。"""
+    if not row["owned"] or row["maxed"] or row["short"] is None:
+        return (2, 0, -row["used"])
+    # 上げられるものを先頭に、次いで不足の少ない順。同じなら よく使う順。
+    return (0 if row["short"] == 0 else 1, row["short"], -row["used"])
 
 
 def summary(conn, player_tag, rows):

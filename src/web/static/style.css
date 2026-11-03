@@ -278,6 +278,33 @@ tbody tr {
   transition: background 0.12s;
 }
 
+/* ---- 見出しを押して並べ替える表（判定は base.html） ---- */
+th.sort-head { cursor: pointer; user-select: none; }
+th.sort-head:hover { color: var(--text); }
+th.sort-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 並べ替え中の列に向きの印を添える。幅が動かないよう、印の分の余白は常に取る */
+th.sort-head::after {
+  content: "　"; font-size: 9px; margin-left: 3px; color: var(--accent);
+}
+th[aria-sort="ascending"]::after { content: "▲"; }
+th[aria-sort="descending"]::after { content: "▼"; }
+th[aria-sort] { color: var(--text); }
+
+/* 見出しを隠す表（自デッキ・カード育成）向けの、並べ替えボタン。
+   見出しが見えている画面では不要なので、既定では出さない。 */
+.sort-chips { display: none; gap: 2px; flex-wrap: wrap; margin: -4px 0 10px; }
+.sort-chips button[data-dir]::after {
+  content: "▼"; font-size: 9px; margin-left: 3px;
+}
+.sort-chips button[data-dir="ascending"]::after { content: "▲"; }
+
+@media (max-width: 640px) {
+  /* 見出し行を使わない表だけ、代わりにボタンを出す */
+  .deck-table ~ .sort-chips, .progress-table ~ .sort-chips,
+  .sort-chips:has(+ .table-wrap > .deck-table),
+  .sort-chips:has(+ .table-wrap > .progress-table) { display: flex; }
+}
+
 /* 横幅に収まる表だけ、見出しをヘッダの直下に固定する（判定は base.html） */
 .table-wrap.fits { overflow: visible; }
 .table-wrap.fits thead th { position: sticky; top: var(--header-h, 0px); z-index: 5; }
@@ -554,9 +581,9 @@ body.hide-unreliable tr.unreliable { display: none; }
    iPhone 16 Pro Max（440px）や Nothing Phone（412px）では横幅に余裕があるため、
    列を省くのは 400px 未満の端末に限る。 */
 @media (max-width: 400px) {
-  /* カード名の幅を確保する。出現率は「対戦数順」に切り替えると表示される */
+  /* いちばん狭い画面では、カード名の幅を確保するために出現率の列を省く。
+     出現率と近い意味を持つ「対戦」の列は残るため、並べ替えの手がかりは失われない */
   .col-appear { display: none; }
-  body.sort-appear .col-appear { display: table-cell; }
   .badge.evo { display: none; }
   th, td { padding: 8px 5px; }
   .hero-value { font-size: 36px; }

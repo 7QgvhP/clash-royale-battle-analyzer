@@ -76,17 +76,18 @@
 {% endif %}
 
 <div class="table-wrap">
-<table>
+<table class="sortable">
   <thead>
     <tr><th>レベル差</th><th class="num">対戦</th><th class="num">勝率</th><th class="num">信頼区間</th></tr>
   </thead>
   <tbody>
     {% for b in buckets %}
     <tr class="{% if not b.reliable %}unreliable{% endif %}">
-      <td>{{ b.label }}{% if not b.reliable %}<span class="badge">参考値</span>{% endif %}</td>
+      {# 「-2以下」のような表記のため、並べ替えには元の並び順を使う #}
+      <td data-sort-value="{{ loop.index0 }}">{{ b.label }}{% if not b.reliable %}<span class="badge">参考値</span>{% endif %}</td>
       <td class="num">{{ b.total }}</td>
-      <td class="num"><span class="rate">{{ b.rate | pct }}</span></td>
-      <td class="num ci">{% if b.margin is not none %}±{{ b.margin | pct }}{% else %}--{% endif %}</td>
+      <td class="num" data-sort-value="{{ b.rate if b.rate is not none }}"><span class="rate">{{ b.rate | pct }}</span></td>
+      <td class="num ci" data-sort-value="{{ b.margin if b.margin is not none }}">{% if b.margin is not none %}±{{ b.margin | pct }}{% else %}--{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
