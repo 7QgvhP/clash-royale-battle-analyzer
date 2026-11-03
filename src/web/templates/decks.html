@@ -30,9 +30,10 @@
           <strong style="font-weight:500">{{ row.label }}</strong>
           {% if not row.reliable %}<span class="badge">参考値</span>{% endif %}
         </div>
-        {# 入れ替え前後で成績が違うことがあるため、構成が複数あれば内訳を出す #}
+        {# 入れ替え前後で成績が違うことがあるため、構成が複数あれば内訳を出す。
+           既定は閉じた状態。まずはデッキごとの成績を一覧で見たいため。 #}
         {% if row.variants | length > 1 %}
-        <details class="variants" open>
+        <details class="variants">
           <summary>構成の内訳（{{ row.variants | length }}種）</summary>
           <ul>
             {% for v in row.variants %}
