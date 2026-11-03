@@ -17,7 +17,7 @@ import json
 # 画面に出す並び順の種類。キーはURLの値、値は画面のラベル。
 SORT_LABELS = {
     "soon": "あと少し順",
-    "steps": "上げられる段数順",
+    "reach": "上げられる最大Lv順",
     "level": "レベルの低い順",
     "used": "よく使う順",
     "mastery": "マスタリーの進み順",
@@ -45,23 +45,22 @@ def _required(table, kind, rarity, level):
 
 
 def _reachable(table, rarity, level, count, game_max):
-    """今の所持枚数だけで到達できるレベルと、そこまでに要るゴールドを返す。
+    """今の所持枚数だけで到達できるレベルと、上げられる段数を返す。
 
     レベルを1つ上げるたびに、その分の枚数を使う。使った残りで次も上げられるなら
     続けて上げる、という数え方をする（ゲーム内で枚数を使い切る順序と同じ）。
     必要量が分からない場合は、今のレベルのまま返す。
     """
     if level is None:
-        return None, 0, 0
-    remain, reached, gold = count, level, 0
+        return None, 0
+    remain, reached = count, level
     while reached < game_max:
         need = _required(table, "cards", rarity, reached + 1)
         if need is None or remain < need:
             break
         remain -= need
-        gold += _required(table, "gold", rarity, reached + 1) or 0
         reached += 1
-    return reached, reached - level, gold
+    return reached, reached - level
 
 
 def card_progress(conn, player_tag, sort=DEFAULT_SORT):
@@ -100,10 +99,9 @@ def card_progress(conn, player_tag, sort=DEFAULT_SORT):
         count = have["card_count"] if have else 0
         next_level = level + 1 if level and level < game_max else None
         need = _required(table, "cards", rarity, next_level) if next_level else None
-        gold = _required(table, "gold", rarity, next_level) if next_level else None
         short = max(0, need - count) if need is not None else None
         # 今の枚数だけで、続けて何レベルまで上げられるか
-        reach, steps, reach_gold = _reachable(table, rarity, level, count, game_max)
+        reach, steps = _reachable(table, rarity, level, count, game_max)
 
         badge = mastery.get(card["card_id"])
         rows.append({
@@ -120,11 +118,9 @@ def card_progress(conn, player_tag, sort=DEFAULT_SORT):
             "count": count,
             "next_level": next_level,
             "need": need,
-            "gold": gold,
             "short": short,
             "reach_level": reach,
             "reach_steps": steps,
-            "reach_gold": reach_gold,
             # 不足が無いものは「上げられる」。必要量が分からないものは None。
             "ready": (short == 0) if short is not None else None,
             "star_level": have["star_level"] if have else None,
@@ -147,11 +143,11 @@ def _sorted(rows, sort):
             return (2, 0, -r["used"])
         return (0 if r["short"] == 0 else 1, r["short"], -r["used"])
 
-    def steps(r):
-        # 上げられる段数の多い順。同じ段数ならよく使う順。
+    def reach(r):
+        # 所持枚数で到達できるレベルの高い順。同じなら よく使う順。
         if not r["owned"]:
             return (1, 0, 0)
-        return (0, -r["reach_steps"], -r["used"])
+        return (0, -(r["reach_level"] or 0), -r["used"])
 
     def level(r):
         return (2, 0, 0) if not r["owned"] else (0, r["level"] or 0, -r["used"])
@@ -166,7 +162,7 @@ def _sorted(rows, sort):
         # 同じ段階の中はよく使う順にする。
         return (0, -r["mastery_level"], -r["used"])
 
-    key = {"soon": soon, "steps": steps, "level": level, "used": used,
+    key = {"soon": soon, "reach": reach, "level": level, "used": used,
            "mastery": mastery}.get(sort, soon)
     return sorted(rows, key=key)
 

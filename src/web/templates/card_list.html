@@ -48,7 +48,6 @@
       <th class="num">Lv</th>
       <th class="num">所持</th>
       <th class="num">次のLvに必要</th>
-      <th class="num">必要ゴールド</th>
       <th class="num">マスタリー</th>
     </tr>
   </thead>
@@ -58,7 +57,7 @@
         data-level="{{ r.level if r.level is not none else 99 }}"
         data-used="{{ r.used }}"
         data-mastery="{{ r.mastery_level if r.mastery_level is not none else -1 }}"
-        data-steps="{{ r.reach_steps }}"
+        data-reach="{{ r.reach_level if r.reach_level is not none else 0 }}"
         data-owned="{{ 1 if r.owned else 0 }}"
         class="{% if not r.owned %}unowned{% endif %}">
       <td data-label="カード">
@@ -109,10 +108,6 @@
           {% endif %}
         {% endif %}
       </td>
-      <td class="num" data-label="必要ゴールド">
-        {% if r.maxed or r.gold is none %}<span class="card-meta">—</span>
-        {% else %}{{ "{:,}".format(r.gold) }}{% endif %}
-      </td>
       <td class="num" data-label="マスタリー">
         {% if r.mastery_level is none %}
           <span class="card-meta">—</span>
@@ -133,8 +128,7 @@
   カードを選ぶと、そのカードの性能値（HP・ダメージなど）を表示する。<br>
   <strong style="font-weight:600">所持</strong> は今持っている枚数、
   <strong style="font-weight:600">次のLvに必要</strong> はレベルを1つ上げるのに要る枚数で、
-  不足が無いものには「上げられる」を付けている。必要ゴールドは所持ゴールドと比べていない
-  （公式APIが所持ゴールドを返さないため）。<br>
+  不足が無いものには「上げられる」を付けている。<br>
   レベルの下の <strong style="font-weight:600">→ 13（+2）</strong> は、
   <strong style="font-weight:600">今の所持枚数だけで続けて上げたときの到達レベル</strong>。
   1レベル上げるごとに枚数を使い、残りで次も上げられるなら続ける、という数え方をしている。
@@ -178,8 +172,8 @@
     level: function (a, b) {
       return num(a, 'level') - num(b, 'level') || num(b, 'used') - num(a, 'used');
     },
-    steps: function (a, b) {
-      return num(b, 'steps') - num(a, 'steps') || num(b, 'used') - num(a, 'used');
+    reach: function (a, b) {
+      return num(b, 'reach') - num(a, 'reach') || num(b, 'used') - num(a, 'used');
     },
     used: function (a, b) { return num(b, 'used') - num(a, 'used'); },
     mastery: function (a, b) {

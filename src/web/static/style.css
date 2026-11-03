@@ -517,7 +517,7 @@ body.hide-unreliable tr.unreliable { display: none; }
      1段目にカード、2段目に数値を4つ並べ、各値の上に項目名を添える。 */
   .progress-table thead { display: none; }
   .progress-table tbody tr {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px; padding: 12px 0;
   }
   .progress-table td { padding: 0; }
