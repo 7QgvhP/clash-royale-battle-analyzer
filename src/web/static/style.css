@@ -324,9 +324,7 @@ th[aria-sort] { color: var(--text); }
 
 @media (max-width: 640px) {
   /* 見出し行を使わない表だけ、代わりにボタンを出す */
-  .deck-table ~ .sort-chips, .progress-table ~ .sort-chips,
-  .sort-chips:has(+ .table-wrap > .deck-table),
-  .sort-chips:has(+ .table-wrap > .progress-table) { display: flex; }
+  .sort-chips:has(+ .table-wrap > .deck-table) { display: flex; }
 }
 
 /* 横幅に収まる表だけ、見出しをヘッダの直下に固定する（判定は base.html） */
@@ -551,6 +549,13 @@ body.hide-unreliable tr.unreliable { display: none; }
   .deck-table .deck-lg img { width: 100%; height: auto; }
 }
 
+/* 見出しの言い回しを画面幅で切り替える。狭い画面では短いほうを出す */
+.col-short { display: none; }
+@media (max-width: 640px) {
+  .col-full { display: none; }
+  .col-short { display: inline; }
+}
+
 /* ---- カード育成 ----
    1行が1枚のカード。画像と名前・レベル・枚数・必要量・マスタリーを並べる。 */
 .progress-card { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -565,26 +570,23 @@ body.hide-unreliable tr.unreliable { display: none; }
 .progress-table tr.unowned { opacity: 0.55; }
 
 @media (max-width: 640px) {
-  /* 自デッキと同じく、狭い画面では行を2段に組み替える。
-     1段目にカード、2段目に数値を4つ並べ、各値の上に項目名を添える。 */
-  .progress-table thead { display: none; }
-  .progress-table tbody tr {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px; padding: 12px 0;
-  }
-  .progress-table td { padding: 0; }
-  .progress-table td:first-child { grid-column: 1 / -1; }
-  .progress-table td.num { text-align: left; }
-  .progress-table td[data-label]:not(:first-child)::before {
-    content: attr(data-label); display: block; margin-bottom: 2px;
-    font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.06em; color: var(--text-mute);
-  }
-  .progress-card .card-img { width: 34px; height: 41px; }
-  /* マスタリーは5つ目の値で、4つ並べた次の行に1つだけ残るため、
-     1行まるごと使って「別の情報」として見せる。 */
-  .progress-table td[data-label="マスタリー"] { grid-column: 1 / -1; }
-  /* この表では、補助情報（不足枚数・レア度・マスタリーの残り）が本題なので、
-     表の中の .card-meta を省く既定のルールから除外する。 */
+  /* 1枚＝1行のまま、画面幅に収める。列を折り返すと1枚に3行かかり、
+     何枚ぶんあるのかが掴みにくくなるため、中身を詰める方で対応する。
+       ・補助の文字（レア度・コスト・使用回数、「枚数は足りている」）は省く
+       ・見出しは短い言い回しに差し替える（.col-short）
+       ・余白と並べ替えの印を詰める
+     それでも入らない幅では、app.js が文字を少しだけ小さくする。 */
+  .progress-table { font-size: var(--table-fs, 12px); }
+  .progress-table th, .progress-table td { padding: 8px 2px; }
+  .progress-table th { letter-spacing: 0; }
+  .progress-table th.sort-head::after { margin-left: 2px; font-size: 5px; }
+  .progress-card { gap: 6px; }
+  .progress-card .card-img { width: 28px; height: 34px; }
+  /* カード名の下の補助情報と、「枚数は足りている」はバッジと重複するので省く */
+  .progress-table .progress-card div.card-meta,
+  .progress-table td[data-label="次のLvに必要"] div.card-meta { display: none; }
+  /* 到達レベルは「→ 13」まで。上がる段数は幅を取るわりに読み取りやすさが増えない */
+  .progress-table .reach-steps { display: none; }
   .progress-table div.card-meta { display: block; }
   .progress-table span.card-meta { display: inline; }
 }

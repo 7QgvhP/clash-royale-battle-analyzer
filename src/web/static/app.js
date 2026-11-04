@@ -212,6 +212,27 @@
   var header = document.querySelector('.header');
   var nav = document.querySelector('.nav');
 
+  // class="shrink-to-fit" の表は、画面幅に収まらないとき文字を少しだけ小さくする。
+  // 小さくしすぎると読めないので下限を決め、それでも入らなければ横スクロールに任せる。
+  var BASE_FS = 12;    // スマートフォンでの既定の文字サイズ（CSSと揃える）
+  var MIN_FS = 10.5;
+  var STEP = 0.5;
+
+  function shrinkToFit(table, wrap) {
+    if (!table.classList.contains('shrink-to-fit')) return;
+    // 画面が広いときは縮めない（CSS側の既定サイズに戻す）
+    if (window.innerWidth > 640) {
+      table.style.removeProperty('--table-fs');
+      return;
+    }
+    var size = BASE_FS;
+    table.style.setProperty('--table-fs', size + 'px');
+    while (table.scrollWidth > wrap.clientWidth + 1 && size > MIN_FS) {
+      size -= STEP;
+      table.style.setProperty('--table-fs', size + 'px');
+    }
+  }
+
   function measure() {
     // --header-h はヘッダの高さ（ナビを留める位置）。
     // --stick-h はヘッダ＋ナビの高さ（表の見出しを留める位置）。
@@ -221,6 +242,7 @@
     document.querySelectorAll('.table-wrap').forEach(function (wrap) {
       var table = wrap.querySelector('table');
       if (!table) return;
+      shrinkToFit(table, wrap);
       // 判定のあいだは一度スクロールできる状態に戻し、本来の幅で比べる
       wrap.classList.remove('fits');
       wrap.classList.toggle('fits', table.scrollWidth <= wrap.clientWidth + 1);

@@ -34,14 +34,16 @@
 <h2>カードごとの育成状況</h2>
 
 <div class="table-wrap">
-<table class="progress-table sortable">
+<table class="progress-table sortable shrink-to-fit">
   <thead>
     <tr>
       <th class="sort-text">カード</th>
       <th class="num">Lv</th>
       <th class="num">所持</th>
-      <th class="num">次のLvに必要</th>
-      <th class="num">マスタリー</th>
+      <th class="num" data-sort-label="次のLvに必要">
+        <span class="col-full">次のLvに必要</span><span class="col-short">必要</span></th>
+      <th class="num" data-sort-label="マスタリー">
+        <span class="col-full">マスタリー</span><span class="col-short">段階</span></th>
     </tr>
   </thead>
   <tbody id="progress-body">
@@ -78,7 +80,7 @@
             <div class="card-meta">最大</div>
           {% elif r.reach_steps %}
             {# 今の所持枚数だけで、続けて上げられるところまでの到達レベル #}
-            <div class="card-meta ok">→ {{ r.reach_level }}（+{{ r.reach_steps }}）</div>
+            <div class="card-meta ok">→ {{ r.reach_level }}<span class="reach-steps">（+{{ r.reach_steps }}）</span></div>
           {% endif %}
         {% else %}--{% endif %}
       </td>
