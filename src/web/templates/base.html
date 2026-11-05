@@ -37,30 +37,9 @@
 
 <div class="header">
   <div class="header-inner">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">クラロワ対戦分析</span>
-    </div>
-
-    <div class="player">
-      {% if players | length > 1 %}
-        {# 選択肢の値をそのまま遷移先URLにする。サーバー無しでも動く。
-           行き先は常にサマリー。開いていたタブのまま切り替えると、画面によって
-           挙動が変わって分かりにくいうえ、自デッキの絞り込みは持ち主ごとに別物で、
-           そのまま持ち越すと存在しないページを指してしまうため。 #}
-        <select class="player-switch" onchange="location.href=this.value">
-          {% for p in players %}
-            <option value="{{ page_url('summary', player=p.player_tag, deck=None) }}"
-                    {% if p.player_tag == player_tag %}selected{% endif %}>
-              {{ p.name or p.player_tag }}
-            </option>
-          {% endfor %}
-        </select>
-      {% else %}
-        <span class="player-name">{{ player_name or "プレイヤー" }}</span>
-      {% endif %}
-    </div>
-    <div class="header-actions">
+    {# 左に収集状況、中央にツール名、右端に表示テーマとプレイヤー切り替えを置く。
+       プレイヤー切り替えは頻繁に使わないため、右端で控えめに見せる #}
+    <div class="header-status">
       <div class="status {% if status.state == 'error' %}error{% elif status.warning %}warn{% endif %}">
         {% if status.state == 'none' %}
           収集履歴がありません
@@ -71,8 +50,34 @@
             class="status-msg"> ／ {{ status.message }}</span>
         {% endif %}
       </div>
+    </div>
+
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">クラロワ対戦分析</span>
+    </div>
+
+    <div class="header-actions">
       <button class="theme-toggle" id="theme-toggle" type="button"
               aria-label="表示テーマを切り替える" title="表示テーマを切り替える">◐</button>
+      <div class="player">
+        {% if players | length > 1 %}
+          {# 選択肢の値をそのまま遷移先URLにする。サーバー無しでも動く。
+             行き先は常にサマリー。開いていたタブのまま切り替えると、画面によって
+             挙動が変わって分かりにくいうえ、自デッキの絞り込みは持ち主ごとに別物で、
+             そのまま持ち越すと存在しないページを指してしまうため。 #}
+          <select class="player-switch" onchange="location.href=this.value">
+            {% for p in players %}
+              <option value="{{ page_url('summary', player=p.player_tag, deck=None) }}"
+                      {% if p.player_tag == player_tag %}selected{% endif %}>
+                {{ p.name or p.player_tag }}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <span class="player-name">{{ player_name or "プレイヤー" }}</span>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>

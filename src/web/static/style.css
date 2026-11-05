@@ -154,17 +154,27 @@ a { color: inherit; text-decoration: none; }
 }
 .header-inner {
   max-width: 1120px; margin: 0 auto; padding: 12px 20px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap;
+  /* 左右の列を同じ幅にして、ツール名を画面の中央に置く */
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 12px;
 }
-.player { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.player-name { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
-
-.header-actions { display: flex; align-items: center; gap: 8px; }
+.header-status { justify-self: start; min-width: 0; }
+.header-actions {
+  justify-self: end; min-width: 0;
+  display: flex; align-items: center; gap: 4px;
+}
+/* プレイヤー切り替えは頻繁に使わないため、小さく控えめな色にする */
+.player { display: flex; align-items: center; min-width: 0; }
+.player-name {
+  font-size: 12px; font-weight: 500; color: var(--text-sub);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 .status {
   font-size: 12px; padding: 0 4px; border-radius: var(--radius-sm);
   color: var(--text-sub); white-space: nowrap;
+  /* 中央のツール名に重ならないよう、収まらない分は省略する */
+  overflow: hidden; text-overflow: ellipsis;
 }
 /* 異常や注意のときだけ面で目立たせる。平常時は文字だけにする */
 .status.error { background: var(--neg-soft); color: var(--neg); padding: 3px 8px; }
@@ -228,7 +238,13 @@ a { color: inherit; text-decoration: none; }
 .filters select:focus-visible, .player-switch:focus-visible {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.player-switch { font-size: var(--fs-lg); font-weight: 600; padding: 5px 28px 5px 10px; }
+.player-switch {
+  max-width: 100%; text-overflow: ellipsis;
+  font-size: 12px; font-weight: 500; color: var(--text-sub);
+  padding: 4px 24px 4px 8px; background-position: right 8px center;
+  border-color: transparent; background-color: transparent;
+}
+.player-switch:hover { color: var(--text); }
 
 .filters input[type="checkbox"] {
   width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer;
@@ -469,8 +485,16 @@ body.hide-unreliable tr.unreliable { display: none; }
 @media (max-width: 640px) {
   body { font-size: 13px; }
   .wrap { padding: 0 12px 56px; }
-  .header-inner { padding: 10px 12px; gap: 8px; }
-  .player-name { font-size: 15px; }
+  /* 3列では幅が足りないため、ツール名を1行目の中央に置き、
+     収集状況と操作は2行目の左右に分ける */
+  .header-inner {
+    padding: 10px 12px; gap: 6px 8px;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "brand brand" "status actions";
+  }
+  .header-status { grid-area: status; }
+  .brand { grid-area: brand; justify-self: center; }
+  .header-actions { grid-area: actions; }
 
   .nav { margin: 0 0 12px; padding-top: 14px; gap: 2px 18px; }
   .nav a { padding: 10px 0; font-size: 13px; }
@@ -599,7 +623,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   .status-msg { display: none; }
   /* 押しやすさを優先し、小さくしすぎない */
   .theme-toggle { width: 36px; height: 36px; font-size: 15px; }
-  .player-switch { min-height: 38px; }
+  .player-switch { min-height: 36px; }
 
   .card-name { line-height: 1.35; }
 }
@@ -620,8 +644,6 @@ body.hide-unreliable tr.unreliable { display: none; }
 
 .brand {
   display: inline-flex; align-items: center; gap: 8px;
-  padding-right: 12px; margin-right: 2px;
-  border-right: 1px solid var(--border);
 }
 .brand-mark {
   width: 28px; height: 28px; border-radius: var(--radius-sm); flex-shrink: 0;
@@ -637,7 +659,7 @@ body.hide-unreliable tr.unreliable { display: none; }
 
 @media (max-width: 640px) {
   /* 狭い画面ではアイコンだけ残し、名前は次の行へ回さない */
-  .brand { padding-right: 10px; gap: 7px; }
+  .brand { gap: 7px; }
   .brand-name { font-size: 17px; }
   .brand-mark { width: 24px; height: 24px; }
 }
