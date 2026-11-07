@@ -621,8 +621,8 @@ body.hide-unreliable tr.unreliable { display: none; }
   .matrix .row-tag { display: inline; font-weight: 600; color: var(--text-sub); }
   .matrix-cards { grid-template-columns: repeat(auto-fill, 24px); gap: 7px 3px; }
   .matrix-card img, .matrix-card .placeholder { width: 24px; height: 29px; }
-  /* 対戦数まで出すと横幅が足りない。列の見出しと、押したときの表示で補う */
-  .matrix-card b { display: none; }
+  /* 対戦数は3桁（105戦）でも幅21pxで、カード1枚の枠24pxに収まる */
+  .matrix-card b { font-size: 8px; white-space: nowrap; margin-top: 2px; }
   .matrix-card i { font-size: 9px; }
 }
 
