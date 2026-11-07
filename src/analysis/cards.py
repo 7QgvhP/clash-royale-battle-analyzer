@@ -137,7 +137,7 @@ def card_matrix(rows, band=EVEN_BAND):
 
     マスの中は勝率の低い順に詰めるため、いちばん苦手なカードが左上に来る。
     同率のときは対戦数の多いほう（根拠の確かなほう）を先に置く。
-    カードが少なすぎて列を作れない場合は None を返す。
+    カードが少なすぎる場合と、対戦数に差が無くて列を分けられない場合は None を返す。
     """
     cards = [r for r in rows if r["rate"] is not None and r["delta"] is not None]
     if len(cards) < len(MATRIX_COLS):
@@ -148,6 +148,13 @@ def card_matrix(rows, band=EVEN_BAND):
     for card in cards:
         key = (_matrix_row(card["delta"], band), _matrix_col(card["total"], first, second))
         buckets[key].append(card)
+
+    # 対戦数がどれも同じだと列を分けられず、1列に固まった図になる。
+    # 絞り込みの結果が1戦だけの場合などがこれにあたる。図にする意味が無いので出さない。
+    filled = sum(1 for col, _ in MATRIX_COLS
+                 if any(buckets[(row, col)] for row, _ in MATRIX_ROWS))
+    if filled < 2:
+        return None
 
     for cell in buckets.values():
         cell.sort(key=lambda c: (c["rate"], -c["total"]))
