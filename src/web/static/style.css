@@ -441,7 +441,12 @@ tr.unreliable .rate { color: var(--text-mute); }
 .matrix .row-tag { display: none; }
 .matrix-empty { font-size: var(--fs-xs); color: var(--text-mute); }
 
-.matrix-cards { display: grid; grid-template-columns: repeat(auto-fill, 36px); gap: 10px 6px; }
+/* 列はマスの幅いっぱいに広げる。固定幅で並べると、折り返したときに右側だけ余る。
+   1fr で余りを各列へ均等に配らせ、カードはその中で中央に置く。
+   枚数が列数より少ないマスは、前から順に埋まるので左詰めのまま。 */
+.matrix-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 10px 6px;
+}
 .matrix-card { display: block; text-align: center; text-decoration: none; color: inherit; }
 .matrix-card img, .matrix-card .placeholder {
   display: block; margin: 0 auto; width: 30px; height: 36px; object-fit: contain;
@@ -619,7 +624,7 @@ body.hide-unreliable tr.unreliable { display: none; }
   .matrix-cell { padding: 8px 0 12px; }
   .matrix-label { font-size: 9px; margin-bottom: 6px; }
   .matrix .row-tag { display: inline; font-weight: 600; color: var(--text-sub); }
-  .matrix-cards { grid-template-columns: repeat(auto-fill, 24px); gap: 7px 3px; }
+  .matrix-cards { grid-template-columns: repeat(auto-fill, minmax(24px, 1fr)); gap: 7px 3px; }
   .matrix-card img, .matrix-card .placeholder { width: 24px; height: 29px; }
   /* 対戦数は3桁（105戦）でも幅21pxで、カード1枚の枠24pxに収まる */
   .matrix-card b { font-size: 8px; white-space: nowrap; margin-top: 2px; }
