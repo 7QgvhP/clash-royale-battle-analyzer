@@ -403,6 +403,53 @@ tr.unreliable .rate { color: var(--text-mute); }
 }
 .deck-lg img { width: 46px; height: 55px; }
 
+/* ---------- 相手カードのマトリクス ---------- */
+/* 「対戦数 × 勝率」は散布図が本来の形だが、カード画像を点にすると重なって
+   読めなかった（v1.10.1 で取り消し）。位置を3×3のマスに丸めることで、
+   重なりを無くしたまま全カードを画像で並べる。
+   枠では囲わず、段の区切りに細い線を1本引くだけにする。 */
+
+.matrix { display: grid; grid-template-columns: auto repeat(3, 1fr); column-gap: 18px; }
+.matrix-head {
+  font-size: var(--fs-xs); color: var(--text-sub); text-align: center; padding-bottom: 8px;
+}
+.matrix-head span { display: block; color: var(--text-mute); }
+/* 段の見出し。縦書きにして、カードの置き場所を削らない */
+.matrix-side {
+  writing-mode: vertical-rl; text-align: center; letter-spacing: 0.1em;
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-sub);
+  border-top: 1px solid var(--border); padding: 14px 10px 0 0;
+}
+.matrix-cell { border-top: 1px solid var(--border); padding: 12px 0 16px; }
+.matrix-label {
+  display: flex; justify-content: space-between; gap: 6px;
+  font-size: var(--fs-xs); color: var(--text-mute); margin-bottom: 8px;
+}
+.matrix .row-tag { display: none; }
+.matrix-empty { font-size: var(--fs-xs); color: var(--text-mute); }
+
+.matrix-cards { display: grid; grid-template-columns: repeat(auto-fill, 36px); gap: 10px 6px; }
+.matrix-card { display: block; text-align: center; text-decoration: none; color: inherit; }
+.matrix-card img, .matrix-card .placeholder {
+  display: block; margin: 0 auto; width: 30px; height: 36px; object-fit: contain;
+  filter: var(--card-shadow);
+}
+.matrix-card .placeholder {
+  background: var(--surface-2); border-radius: var(--radius-sm); filter: none;
+}
+.matrix-card b {
+  display: block; font-size: 9px; font-weight: 400; line-height: 1.3;
+  color: var(--text-mute); margin-top: 3px;
+}
+.matrix-card i {
+  display: block; font-size: 10px; font-style: normal; font-weight: 600; line-height: 1.3;
+}
+.matrix-card i.neg { color: var(--neg); }
+.matrix-card i.pos { color: var(--pos); }
+/* 試合数が足りないカードは、表と同じく参考値として薄くし、同じ操作で隠せるようにする */
+.matrix-card.unreliable { opacity: 0.5; }
+body.hide-unreliable .matrix-card.unreliable { display: none; }
+
 /* ---------- 対戦履歴 ---------- */
 
 .match-row {
@@ -546,6 +593,24 @@ body.hide-unreliable tr.unreliable { display: none; }
   .match-row .deck { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
   .match-row .deck img { width: 100%; height: auto; }
   .chart-box { height: 210px; }
+}
+
+/* ---------- マトリクス（スマートフォン） ----------
+   縦に積むと9マス分の長いスクロールになり、2軸で見比べる意味が薄れる。
+   3×3の形は保ったまま、画像と文字を小さくして画面幅に収める。 */
+
+@media (max-width: 640px) {
+  .matrix { grid-template-columns: repeat(3, 1fr); column-gap: 8px; }
+  .matrix-corner, .matrix-side { display: none; }
+  .matrix-head { font-size: 9px; padding-bottom: 6px; }
+  .matrix-cell { padding: 8px 0 12px; }
+  .matrix-label { font-size: 9px; margin-bottom: 6px; }
+  .matrix .row-tag { display: inline; font-weight: 600; color: var(--text-sub); }
+  .matrix-cards { grid-template-columns: repeat(auto-fill, 24px); gap: 7px 3px; }
+  .matrix-card img, .matrix-card .placeholder { width: 24px; height: 29px; }
+  /* 対戦数まで出すと横幅が足りない。列の見出しと、押したときの表示で補う */
+  .matrix-card b { display: none; }
+  .matrix-card i { font-size: 9px; }
 }
 
 /* ---------- 自デッキ（スマートフォン） ----------

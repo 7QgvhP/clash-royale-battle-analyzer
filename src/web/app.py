@@ -194,6 +194,7 @@ def weak_cards(conn, filters):
     return {
         "overall": overall,
         "rows": rows,
+        "matrix": cards_analysis.card_matrix(rows),
         "total_matches": total,
         "supports": cards_analysis.support_card_stats(conn, filters, config, overall["rate"]),
     }

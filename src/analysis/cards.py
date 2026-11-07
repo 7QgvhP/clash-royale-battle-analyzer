@@ -2,6 +2,14 @@
 """相手カード別の勝率集計。"""
 from src.analysis.stats import from_row
 
+# 「勝率 × 対戦数」のマトリクスの段と列。
+# 段は上ほど勝率が低く（苦手が先）、列は右ほど対戦数が多い。
+MATRIX_ROWS = (("bad", "苦手"), ("even", "互角"), ("good", "得意"))
+MATRIX_COLS = (("few", "たまに当たる"), ("mid", "ときどき当たる"), ("many", "よく当たる"))
+
+# 全体勝率からこの幅に収まるカードは「互角」とみなす
+EVEN_BAND = 0.03
+
 
 def opponent_card_stats(conn, filters, config, overall_rate=None):
     """相手デッキに含まれていたカードごとの勝率と出現率を返す。
@@ -93,3 +101,75 @@ def support_card_stats(conn, filters, config, overall_rate=None):
         results.append(stat)
     results.sort(key=lambda x: -x["matches"])
     return results
+
+
+def _matrix_thresholds(totals):
+    """対戦数を3つに分ける境目を、3分位で求める。
+
+    環境は期間によって変わり、何戦なら「よく当たる」かも一緒に動く。
+    固定の戦数で区切ると、期間を変えたときに片側へ寄ってしまうため、
+    その時点のカードの分布から境目を決める。
+    """
+    ordered = sorted(totals)
+    return ordered[len(ordered) // 3], ordered[len(ordered) * 2 // 3]
+
+
+def _matrix_row(delta, band):
+    """勝率デルタから、段（苦手・互角・得意）を決める。"""
+    if delta < -band:
+        return "bad"
+    return "good" if delta > band else "even"
+
+
+def _matrix_col(total, first, second):
+    """対戦数から、列（たまに・ときどき・よく当たる）を決める。"""
+    if total < first:
+        return "few"
+    return "mid" if total < second else "many"
+
+
+def card_matrix(rows, band=EVEN_BAND):
+    """相手カードを「勝率 × 対戦数」の3×3に振り分ける。
+
+    この2軸は散布図が本来の形だが、カード画像を点にすると重なって読めず、
+    一度取り消している（v1.10.1）。位置を段階に丸めてマスへ入れると、
+    重なりが原理的に起きず、全カードを画像のまま並べられる。
+
+    マスの中は勝率の低い順に詰めるため、いちばん苦手なカードが左上に来る。
+    同率のときは対戦数の多いほう（根拠の確かなほう）を先に置く。
+    カードが少なすぎて列を作れない場合は None を返す。
+    """
+    cards = [r for r in rows if r["rate"] is not None and r["delta"] is not None]
+    if len(cards) < len(MATRIX_COLS):
+        return None
+
+    first, second = _matrix_thresholds([c["total"] for c in cards])
+    buckets = {(row, col): [] for row, _ in MATRIX_ROWS for col, _ in MATRIX_COLS}
+    for card in cards:
+        key = (_matrix_row(card["delta"], band), _matrix_col(card["total"], first, second))
+        buckets[key].append(card)
+
+    for cell in buckets.values():
+        cell.sort(key=lambda c: (c["rate"], -c["total"]))
+
+    # 列の見出しに出す対戦数の幅は、実際に入ったカードから作る。
+    columns = []
+    for col, label in MATRIX_COLS:
+        totals = [c["total"] for row, _ in MATRIX_ROWS for c in buckets[(row, col)]]
+        columns.append({
+            "key": col,
+            "label": label,
+            "range": f"{min(totals)}〜{max(totals)}戦" if totals else "—",
+        })
+
+    return {
+        "columns": columns,
+        "rows": [{
+            "key": row,
+            "label": row_label,
+            "cells": [{"key": col, "label": col_label, "cards": buckets[(row, col)]}
+                      for col, col_label in MATRIX_COLS],
+        } for row, row_label in MATRIX_ROWS],
+        "total": len(cards),
+        "band": band,
+    }

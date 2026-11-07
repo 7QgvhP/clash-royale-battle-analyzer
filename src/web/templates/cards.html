@@ -27,6 +27,60 @@
   </div>
 </div>
 
+{% if matrix %}
+<h2>勝率と対戦数のマトリクス <span class="card-meta">{{ matrix.total }}枚</span></h2>
+
+<div class="matrix">
+  <div class="matrix-corner"></div>
+  {% for col in matrix.columns %}
+    <div class="matrix-head">{{ col.label }}<span>{{ col.range }}</span></div>
+  {% endfor %}
+
+  {% for row in matrix.rows %}
+    <div class="matrix-side">{{ row.label }}</div>
+    {% for cell in row.cells %}
+      <div class="matrix-cell">
+        <div class="matrix-label">
+          <span class="row-tag">{{ row.label }}</span>
+          <span>{{ cell.cards | length }}枚</span>
+        </div>
+        {% if cell.cards %}
+          <div class="matrix-cards">
+            {# 勝率の低い順に左上から詰まっている（並べ替えは集計側で済ませている） #}
+            {% for c in cell.cards %}
+              <a class="matrix-card {% if not c.reliable %}unreliable{% endif %}"
+                 href="{{ card_url(c.card_id) }}"
+                 title="{{ c.name }}／{{ c.total }}戦／勝率 {{ c.rate | pct(0) }}">
+                {% if c.icon_path %}
+                  <img src="{{ asset_url('cards/' ~ c.icon_path) }}"
+                       alt="{{ c.name }}" loading="lazy">
+                {% else %}
+                  <span class="placeholder"></span>
+                {% endif %}
+                <b>{{ c.total }}戦</b>
+                <i class="{% if c.delta < 0 %}neg{% else %}pos{% endif %}">{{ c.rate | pct(0) }}</i>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="matrix-empty">該当なし</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+
+<div class="note">
+  縦は勝率（<strong style="font-weight:600">上ほど苦手</strong>、全体勝率
+  {{ overall.rate | pct }} から±3ポイントまでは「互角」）、
+  横は当たる頻度（<strong style="font-weight:600">右ほどよく当たる</strong>、
+  カードを対戦数で3等分した境目で分けている）。<br>
+  マスの中は勝率の低い順に左上から並ぶため、
+  <strong style="font-weight:600">右上のマスの左上が、最も対策の必要なカード</strong>になる。
+  カードを押すと、そのカードの性能値を表示する。
+</div>
+{% endif %}
+
 <h2>相手カード別の勝率</h2>
 
 {% if rows %}
