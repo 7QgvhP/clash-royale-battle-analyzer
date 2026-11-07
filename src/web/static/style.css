@@ -409,6 +409,19 @@ tr.unreliable .rate { color: var(--text-mute); }
    重なりを無くしたまま全カードを画像で並べる。
    枠では囲わず、段の区切りに細い線を1本引くだけにする。 */
 
+/* 見出しを押すと図を畳める。開閉の印は見出しの先頭に小さく添える。 */
+.matrix-block > summary { cursor: pointer; list-style: none; }
+.matrix-block > summary::-webkit-details-marker { display: none; }
+.matrix-block > summary h2 { gap: 8px; }
+.matrix-block > summary h2::before {
+  content: "▾"; font-size: 11px; font-weight: 400; color: var(--text-mute);
+  align-self: center;
+}
+.matrix-block:not([open]) > summary h2::before { content: "▸"; }
+.matrix-block > summary:hover h2::before { color: var(--text-sub); }
+/* 畳んだときは、下の表の見出しとの間隔を詰める */
+.matrix-block:not([open]) > summary h2 { margin-bottom: 0; }
+
 .matrix { display: grid; grid-template-columns: auto repeat(3, 1fr); column-gap: 18px; }
 .matrix-head {
   font-size: var(--fs-xs); color: var(--text-sub); text-align: center; padding-bottom: 8px;

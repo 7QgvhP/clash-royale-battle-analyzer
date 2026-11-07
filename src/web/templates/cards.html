@@ -28,7 +28,12 @@
 </div>
 
 {% if matrix %}
-<h2>勝率と対戦数のマトリクス <span class="card-meta">{{ matrix.total }}枚</span></h2>
+{# 図は縦に長いため、下の表へ早く行きたいときは畳めるようにする。
+   既定では開いておく（最初に見てほしいのは図のほうであるため）。 #}
+<details class="matrix-block" open>
+  <summary>
+    <h2>勝率と対戦数のマトリクス <span class="card-meta">{{ matrix.total }}枚</span></h2>
+  </summary>
 
 <div class="matrix">
   <div class="matrix-corner"></div>
@@ -79,6 +84,7 @@
   <strong style="font-weight:600">右上のマスの左上が、最も対策の必要なカード</strong>になる。
   カードを押すと、そのカードの性能値を表示する。
 </div>
+</details>
 {% endif %}
 
 <h2>相手カード別の勝率</h2>
