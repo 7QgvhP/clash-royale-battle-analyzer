@@ -27,9 +27,7 @@
   <div class="metric">
     <div class="metric-label">マスタリー達成</div>
     <div class="metric-value">{{ progress_summary.mastery_done }}</div>
-    <div class="metric-sub">記録のあるカード {{ progress_summary.mastery_known }}枚{%
-      if progress_summary.mastery_waiting %} ／ Lv待ち {{ progress_summary.mastery_waiting }}枚{%
-      endif %}</div>
+    <div class="metric-sub">記録のあるカード {{ progress_summary.mastery_known }}枚</div>
   </div>
 </div>
 
@@ -106,22 +104,20 @@
       </td>
       <td class="num" data-label="マスタリー"
           data-sort-value="{{ r.mastery_level if r.mastery_level is not none }}">
-        {% if r.mastery_level is none %}
+        {# 公式APIが返す progress は段階と同じ値、target は常にその+1で、段階の中での
+           進み具合は分からない。そのため段階だけを、
+             いまの段階 / いま解放されている上限 / そのカードの最大
+           の3つで示す。バッジが無い（＝まだ解放されていない）ものは、
+           1つ目を「—」にする。 #}
+        {%- if r.mastery_open_max is none -%}
           <span class="card-meta">—</span>
-          {# バッジが無いのは、そのカードでまだ3勝していない（解放前）ということ #}
-          {% if r.mastery_locked %}<div class="card-meta">未解放</div>{% endif %}
-        {% else %}
-          {# 公式APIが返す progress は段階と同じ値、target は常にその+1で、段階の
-             中での進み具合は分からない。そのため段階だけを出す。
-             分母は、いまのレベルで実際に挑める上限（未解放のセットは含めない）。 #}
-          {{ r.mastery_level }}<span class="card-meta">/{{ r.mastery_open_max
-            or r.mastery_max or "?" }}</span>
-          {% if r.mastery_done %}
-            <div class="card-meta ok">達成</div>
-          {% elif r.mastery_waiting %}
-            <div class="card-meta">Lv{{ r.mastery_next_level }}待ち</div>
-          {% endif %}
-        {% endif %}
+        {%- else -%}
+          {%- if r.mastery_level is none -%}
+            <span class="card-meta">—</span>
+          {%- else -%}{{ r.mastery_level }}{%- endif -%}
+          <span class="card-meta">/{{ r.mastery_open_max }}/{{ r.mastery_max }}</span>
+          {%- if r.mastery_done %}<div class="card-meta ok">達成</div>{% endif -%}
+        {%- endif -%}
       </td>
     </tr>
     {% endfor %}
@@ -141,13 +137,13 @@
   ゴールドは考えていないため、実際にはゴールドが足りずそこまで上げられないことがある。<br>
   <strong style="font-weight:600">マスタリー</strong> はゲーム内の「カードタスク」の段階。
   課題の内容と、段階の中でどこまで進んでいるかは公式APIから取得できないため、段階だけを示す。
+  数字は <strong style="font-weight:600">いまの段階 / いま解放されている上限 /
+  そのカードの最大</strong> の順に並べている（例: 7/7/10 は「解放ぶんは終えていて、
+  レベルを上げれば10まで伸ばせる」状態）。
   タスクは3つで1セットになっていて、<strong style="font-weight:600">セットはカードレベル
   {{ mastery_unlock_levels | join(" / ") }} で順に解放される</strong>。
-  未解放のセットは、そのカードを使っても進まない。そのため
-  <strong style="font-weight:600">分母は、いまのレベルで挑める範囲</strong>にしている
-  （例: Lv9のカードは1セット目だけなので 4 が上限）。
-  解放されている分を終えたカードには「Lv○待ち」を付けている。<br>
-  マスタリーは、そのカードで3勝すると解放される。まだのカードは「未解放」と出す。
+  未解放のセットは、そのカードを使っても進まない。<br>
+  マスタリーは、そのカードで3勝すると解放される。まだのカードは1つ目を「—」にしている。
   セットの総数はカードによって違い、3セットあるカードは最終的に10、2セットなら7で打ち止めになる。
   公式APIはどのカードも10と返し、解放の状況も返さないため、
   上限はタスクセットの数から、解放はカードのレベルから求めている。<br>
