@@ -16,6 +16,21 @@ import json
 
 from src.db import repository as repo
 
+# マスタリーのタスクセットが解放されるゲーム内レベル。
+# タスクは3つで1セットになっていて、カードのレベルが上がるにつれて順に解放される。
+# 未解放のセットは、そのカードを使っても進まない。
+MASTERY_UNLOCK_LEVELS = (7, 10, 14)
+TASKS_PER_SET = 3
+# 段階は「完了したタスク数 + 1」。最初の1は、3勝してマスタリーを解放した分。
+MASTERY_BASE = 1
+
+# 解放レベルの出典。公式APIはこの情報を持たない。
+MASTERY_UNLOCK_SOURCE = {
+    "name": "Clash Royale Wiki（Card Mastery）",
+    "license": "CC BY-SA",
+    "url": "https://clashroyale.fandom.com/wiki/Card_Mastery",
+}
+
 
 def mastery_caps(conn):
     """カードごとのマスタリーの段階の上限を返す。未取得なら None。
@@ -68,6 +83,23 @@ def _usage_counts(conn, player_tag):
         (player_tag,))}
 
 
+def _mastery_unlock(level, mastery_max):
+    """今のレベルで挑める段階の上限と、次のセットが解放されるレベルを返す。
+
+    公式APIは「どのセットが解放されているか」を返さない。解放はカードの
+    レベルだけで決まるため、持っているレベルから計算する。
+    レベルか上限が分からない場合は (None, None) を返す。
+    """
+    if level is None or not mastery_max:
+        return None, None
+    total_sets = (mastery_max - MASTERY_BASE) // TASKS_PER_SET
+    open_sets = min(total_sets, sum(1 for need in MASTERY_UNLOCK_LEVELS if level >= need))
+    open_max = open_sets * TASKS_PER_SET + MASTERY_BASE
+    # まだ解放されていないセットがあれば、その解放レベルを返す
+    next_level = (MASTERY_UNLOCK_LEVELS[open_sets] if open_sets < total_sets else None)
+    return open_max, next_level
+
+
 def _card_row(card, have, badge, used, table, caps, game_max):
     """カード1枚分の育成状況を組み立てる。
 
@@ -89,6 +121,8 @@ def _card_row(card, have, badge, used, table, caps, game_max):
 
     # マスタリーの上限は、分かっていればタスクセット由来の値を使う。無ければAPIの値。
     mastery_max = caps.get(card["name_en"]) or (badge["max_level"] if badge else None)
+    # そのうち、いまのレベルで実際に挑める範囲
+    mastery_open, mastery_next = _mastery_unlock(level, mastery_max)
 
     return {
         "card_id": card["card_id"],
@@ -113,8 +147,16 @@ def _card_row(card, have, badge, used, table, caps, game_max):
         "evolution_level": have["evolution_level"] if have else 0,
         "mastery_level": badge["level"] if badge else None,
         "mastery_max": mastery_max,
+        # いまのレベルで挑める上限と、次のセットが解放されるレベル
+        "mastery_open_max": mastery_open,
+        "mastery_next_level": mastery_next,
         # 上限に達していれば、これ以上進められない（公式APIでは判別できない）
         "mastery_done": bool(badge and mastery_max and badge["level"] >= mastery_max),
+        # 解放されている分は終えていて、あとはレベルを上げるのを待つだけ
+        "mastery_waiting": bool(badge and mastery_open and mastery_next
+                                and badge["level"] >= mastery_open),
+        # バッジが無い＝まだ解放されていない（そのカードで3勝すると解放される）
+        "mastery_locked": have is not None and badge is None,
         "mastery_progress": badge["progress"] if badge else None,
         "mastery_target": badge["target"] if badge else None,
         "used": used,
@@ -167,5 +209,7 @@ def summary(conn, player_tag, rows):
         "steps": sum(r["reach_steps"] for r in owned),
         "mastery_done": sum(1 for r in rows if r["mastery_done"]),
         "mastery_known": sum(1 for r in rows if r["mastery_level"] is not None),
+        # 解放ぶんを終えて、レベル上げ待ちになっているカード
+        "mastery_waiting": sum(1 for r in rows if r["mastery_waiting"]),
         "updated_at": repo.player_cards_updated_at(conn, player_tag),
     }

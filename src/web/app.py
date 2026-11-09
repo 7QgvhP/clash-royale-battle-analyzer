@@ -307,6 +307,8 @@ def card_list_view():
             "game_max_level": repo.game_max_level(conn) or 16,
             "upgrade_source": (progress_analysis.upgrade_table(conn) or {}).get("source"),
             "mastery_source": (progress_analysis.mastery_caps(conn) or {}).get("source"),
+            "mastery_unlock_source": progress_analysis.MASTERY_UNLOCK_SOURCE,
+            "mastery_unlock_levels": progress_analysis.MASTERY_UNLOCK_LEVELS,
         })
         return render_template("card_list.html", **ctx)
     finally:
