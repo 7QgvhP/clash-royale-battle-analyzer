@@ -38,7 +38,9 @@
   <thead>
     <tr>
       <th class="sort-text">カード</th>
-      <th class="num">Lv</th>
+      {# 既定の並びがレベルの降順なので、見出しにもその状態を持たせる。
+         こうしておくと、最初に押したときに昇順へ切り替わる。 #}
+      <th class="num" aria-sort="descending">Lv</th>
       <th class="num">所持</th>
       <th class="num" data-sort-label="次のLvに必要">
         <span class="col-full">次のLvに必要</span><span class="col-short">必要</span></th>

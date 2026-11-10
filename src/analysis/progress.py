@@ -157,8 +157,7 @@ def _card_row(card, have, badge, used, table, caps, game_max):
 def card_progress(conn, player_tag):
     """プレイヤーのカードごとの育成状況を返す。
 
-    並びは「あと少しで上がる順」。画面では見出しを押して並べ替えられるが、
-    最初に開いたときに知りたいのは「いま上げられるカード」のため。
+    並びはレベルの高い順。画面では見出しを押して並べ替えられる。
     所持していないカードも、未入手として最後に並べる。
     """
     table = upgrade_table(conn)
@@ -176,15 +175,18 @@ def card_progress(conn, player_tag):
     rows = [_card_row(card, owned.get(card["card_id"]), mastery.get(card["card_id"]),
                       used.get(card["card_id"], 0), table, caps, game_max)
             for card in cards]
-    return sorted(rows, key=_soon)
+    return sorted(rows, key=_by_level)
 
 
-def _soon(row):
-    """あと少しで上がる順の並び。未入手・最大レベルは後ろへ送る。"""
-    if not row["owned"] or row["maxed"] or row["short"] is None:
-        return (2, 0, -row["used"])
-    # 上げられるものを先頭に、次いで不足の少ない順。同じなら よく使う順。
-    return (0 if row["short"] == 0 else 1, row["short"], -row["used"])
+def _by_level(row):
+    """レベルの高い順の並び。未入手は後ろへ送る。
+
+    同じレベルの中では、画面の「Lv」列を降順に並べ替えたときと同じ順にする
+    （今の所持枚数で到達できるレベルが高いほうを先に、次いで よく使う順）。
+    """
+    if not row["owned"] or row["level"] is None:
+        return (1, 0, 0, 0)
+    return (0, -row["level"], -(row["reach_level"] or 0), -row["used"])
 
 
 def summary(conn, player_tag, rows):
