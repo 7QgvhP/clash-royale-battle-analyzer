@@ -1,0 +1,92 @@
+{
+  "_comment": [
+    "Clash Royale Wiki のレベル別の表（id=\"unit-statistics-table\"）で、",
+    "計算式ではなく数値が直接書かれている列と、性能値の項目との対応表。",
+    "",
+    "表のセルはふだん {{#expr: {{#var:hp_11}} * (1.1^(Lv-11)) round 0 }} という",
+    "式なので、こちらは #vardefine の変数を読んで同じ式で換算している。しかし",
+    "バランス調整のとき、表の数値だけが直されて変数が古いまま残ることがあるため、",
+    "数値が直接書かれた列は、基準レベル（11）の行から読み取って変数より優先する。",
+    "",
+    "キーは英語カード名、その中のキーは表の列見出し（アイコンや画像を除いた文字列）。",
+    "値の書き方は次の3通り。",
+    "  \"dmg\" / \"drill.hp\"   その項目の基準値を、表の数値で置き換える",
+    "                        （\".\" の前はカードが出す別ユニットの接頭辞）",
+    "  \"atk_speed_from_dps\" 秒間ダメージの列として扱い、ダメージから攻撃速度を逆算する",
+    "  null                 その列は使わない",
+    "",
+    "レベルを並べただけの列（ミラー・クローンの「コピー後のレベル」を含む）は、",
+    "ここに書かなくても読み飛ばす。未登録の列が見つかると、収集時に警告が出るので、",
+    "新カードやwiki側の書式変更があったら、そのカードのページを見てここへ足すこと。"
+  ],
+
+  "Barbarian Barrel": {
+    "Barbarian Barrel Area Damage": "spawn"
+  },
+  "Bomber": {
+    "Area Damage": "dmg"
+  },
+  "Boss Bandit": {
+    "Damage": "dmg",
+    "Dash Damage": "dash"
+  },
+  "Fireball": {
+    "Crown Tower Damage": "crown_dmg"
+  },
+  "Giant Snowball": {
+    "Crown Tower Damage": "crown_dmg"
+  },
+  "Goblin Drill": {
+    "Goblin Drill Hitpoints": "drill.hp"
+  },
+  "Goblinstein": {
+    "Monster Hitpoints": "monster.hp"
+  },
+  "Heal Spirit": {
+    "Healing Per Pulse": "heal",
+    "Healing Per Second": null
+  },
+  "Ice Golem": {
+    "_note": "秒間ダメージの列（36）は、wiki自身の攻撃速度 2.5秒 と合わないため使わない。",
+    "Damage": "dmg",
+    "Death Damage": "death",
+    "Damage per second": null
+  },
+  "Minion Giant": {
+    "_note": "変数が無く、表にしか数値が無いカード。秒間ダメージの列（126）は、wiki自身の攻撃速度 1.7秒 と合わないため使わない。",
+    "Hitpoints": "hp",
+    "Damage": "dmg",
+    "Damage per second": null
+  },
+  "Ram Rider": {
+    "_note": "秒間ダメージの列（159）は、wiki自身の攻撃速度 1.8秒 と合わないため使わない。",
+    "Ram Damage": "dmg",
+    "Ram Charge Damage": "charge",
+    "Ram Damage per second": null
+  },
+  "Ronin": {
+    "_note": "変数が無く、表にしか数値が無いカード。攻撃速度は属性表から取る。",
+    "Hitpoints": "hp",
+    "Damage": "dmg"
+  },
+  "Spirit Empress": {
+    "_note": "変数 hp_11 / dmg_11 はページのどこからも参照されておらず、古い値が残っている。",
+    "Hitpoints": "hp",
+    "Damage": "dmg"
+  },
+  "The Log": {
+    "Area Damage": "dmg",
+    "Crown Tower Damage": "crown_dmg"
+  },
+  "Wall Breakers": {
+    "Area Damage": "dmg"
+  },
+  "X-Bow": {
+    "_note": "秒間ダメージの列（153）は属性表の攻撃速度 0.4秒 と一致し、変数側の 0.3秒 が古い。",
+    "Damage": "dmg",
+    "Damage Per Second": "atk_speed_from_dps"
+  },
+  "Zap": {
+    "Crown Tower Damage": "crown_dmg"
+  }
+}

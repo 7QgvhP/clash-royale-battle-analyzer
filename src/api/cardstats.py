@@ -20,7 +20,14 @@ wikitext 上では性能値が2か所に分かれている。
      レベルで変わる値。レベル11を基準に格納されており、wiki側も
      「基準値 × 1.1^(レベル-11)」で各レベルを算出している。
      `golem_hp_11` のように接頭辞が付くものは、そのカードが出す別ユニットを指す。
+
+  3. レベル別の表（id="unit-statistics-table"）
+     セルの中身はたいてい 2 の変数を参照する式なので、ふだんは読む必要がない。
+     ただし一部のページには、式ではなく数値が直接書かれた列がある。バランス調整の
+     とき、表の数値だけが直されて変数が古いまま残ることがあるため、直書きの列は
+     基準レベルの行から読み取り、変数より優先する。
 """
+import logging
 import re
 import time
 import urllib.parse
@@ -54,6 +61,23 @@ SCALING_STATS = ("hp", "dmg", "crown_dmg", "death", "spawn", "charge",
 
 # 段階別の値を表すときの区切り。dmg#2 で「2段階目のダメージ」を意味する。
 STAGE_SEP = "#"
+
+# レベル別の性能値の表のid
+STATS_TABLE_ID = "unit-statistics-table"
+
+# 表の列見出しと性能値の項目との対応は、カードごとに
+# src/data/card_stats_columns.json で与える。対応表に書く値は次の3通り。
+#   "dmg" / "drill.hp"   その項目の基準値を、表の数値で置き換える
+#   "atk_speed_from_dps" 秒間ダメージの列として扱い、ダメージから攻撃速度を逆算する
+#   null                 その列は使わない
+SPEED_FROM_DPS = "atk_speed_from_dps"
+
+# レベルを並べただけの列は性能値ではないので、対応表に書かなくても読み飛ばす。
+# ミラーとクローンの「コピー後のレベル」の列もこれに当たる。
+LEVEL_COLUMN = re.compile(r"Level$", re.I)
+
+# 見出しに埋め込まれた画像
+FILE_LINK = re.compile(r"\[\[(?:File|Image):[^\]]*\]\]", re.I)
 
 
 def _request(titles):
@@ -168,6 +192,145 @@ def parse_variables(wikitext):
     return out
 
 
+def _table_body(wikitext, table_id):
+    """指定したidの表の中身を返す。見つからなければ None。"""
+    # class と id の記述順はページによって前後するため、順序を問わずに探す
+    pattern = r'\{\|[^\n]*id="%s"[^\n]*\n(.*?)\n\|\}' % re.escape(table_id)
+    match = re.search(pattern, wikitext, re.S)
+    return match.group(1) if match else None
+
+
+def _split_cells(line, sep):
+    """表の1行をセルに割る。セルの前に付く書式指定は落とす。"""
+    cells = []
+    for cell in line[1:].split(sep):
+        # scope="col" style="width: 12%;" |Level のような指定を取り除く
+        while True:
+            stripped = re.sub(
+                r'^\s*(?:scope|style|colspan|rowspan|align|class)\s*=\s*"[^"]*"\s*',
+                "", cell)
+            if stripped == cell:
+                break
+            cell = stripped
+        cells.append(cell.lstrip("|").strip())
+    return cells
+
+
+def _table_rows(body):
+    """表を [(行の種類, [セル])] に割る。種類は見出し行が "head"、データ行が "body"。
+
+    ページによって、セルを `|6||133` と1行に並べる書き方と、1セル1行に書く
+    書き方が混在する。見出しのアイコンが次の行に置かれていることもあるため、
+    記号で始まらない行は、直前のセルの続きとして扱う。
+    """
+    rows, current = [], None
+    for raw in body.splitlines():
+        line = raw.strip()
+        if line.startswith("|-"):
+            current = None
+            continue
+        if line.startswith("!"):
+            kind, sep = "head", "!!"
+        elif line.startswith("|"):
+            kind, sep = "body", "||"
+        else:
+            if current and current[1]:
+                current[1][-1] += " " + line
+            continue
+        cells = _split_cells(line, sep)
+        if current is None or current[0] != kind:
+            current = (kind, cells)
+            rows.append(current)
+        else:
+            current[1].extend(cells)
+    return rows
+
+
+def _number(text):
+    """セルが数値そのものなら float で返す。式や単位付きなら None。"""
+    text = (text or "").replace(",", "").strip()
+    return float(text) if re.fullmatch(r"\d+(?:\.\d+)?", text) else None
+
+
+def parse_level_values(wikitext, level=BASE_LEVEL):
+    """レベル別の表から、数値が直接書かれたセルを {列見出し: 値} で返す。
+
+    式（{{#expr:}} や {{Dps}}）のセルは変数から換算できるので対象にしない。
+    レベルを並べただけの列も、性能値ではないので除く。
+    """
+    body = _table_body(wikitext, STATS_TABLE_ID)
+    if not body:
+        return {}
+
+    labels = []
+    for kind, cells in _table_rows(body):
+        if kind == "head":
+            # 見出しに置かれた画像（ミラーのレア度アイコンなど）は見出し名ではない
+            labels = [_clean(FILE_LINK.sub("", c)) for c in cells]
+            continue
+        if not cells or _number(cells[0]) != level:
+            continue
+        found = {}
+        for label, cell in zip(labels, cells):
+            value = _number(cell)
+            if value is None or not label or LEVEL_COLUMN.search(label):
+                continue
+            found[label] = value
+        return found
+    return {}
+
+
+def _find_unit(units, prefix):
+    """接頭辞からユニットを探す。空文字なら本体。"""
+    for unit in units:
+        if (unit.get("prefix") or "") == prefix:
+            return unit
+    return None
+
+
+def apply_level_values(units, values, columns):
+    """表に直書きされた数値で、変数から作った基準値を上書きする。
+
+    columns は {列見出し: 対象の項目} の対応表。戻り値は
+    （上書きした内容の一覧, 対応表に無かった列見出しの一覧）。
+    """
+    columns = columns or {}
+    changed, unmapped, speeds = [], [], []
+
+    def overwrite(unit, key, value, label, target):
+        if unit.get(key) != value:
+            changed.append((label, target, unit.get(key), value))
+            unit[key] = value
+
+    for label, value in values.items():
+        if label not in columns:
+            unmapped.append(label)
+            continue
+        target = columns[label]
+        if not target:
+            continue
+        prefix, _, key = target.rpartition(".")
+        unit = _find_unit(units, prefix)
+        if unit is None:
+            # 変数がまったく無く、表にしか数値が無いカードは、ここで作る
+            unit = {"prefix": prefix or None}
+            units.append(unit)
+        if key == SPEED_FROM_DPS:
+            # ダメージ側の上書きを先に済ませる必要があるため、後回しにする
+            speeds.append((unit, value, label, target))
+            continue
+        overwrite(unit, key, value, label, target)
+
+    for unit, dps, label, target in speeds:
+        # 攻撃速度 = ダメージ ÷ 秒間ダメージ。どちらも表の数値なので、
+        # 変数側の古い攻撃速度ではなく、表の表示と合う値になる。
+        damage = unit.get("dmg")
+        if damage and dps:
+            overwrite(unit, "atk_speed", round(damage / dps, 1), label, "atk_speed")
+
+    return changed, unmapped
+
+
 def _split_prefix(name):
     """変数名を（接頭辞, 種類）に割る。接頭辞はそのカードが出す別ユニットを指す。
 
@@ -229,14 +392,46 @@ def build_units(variables):
     return ordered, leftovers
 
 
-def build_stats(wikitext, page_name, revid=None):
-    """1枚分の性能値をまとめた辞書を返す。性能値が無ければ None。"""
+def _hit_speed(attributes):
+    """属性表の攻撃速度（Hit Speed）を秒数で返す。無ければ None。"""
+    for label, value in attributes:
+        if label == "Hit Speed":
+            match = re.match(r"([0-9]+(?:\.[0-9]+)?)", value)
+            if match:
+                return float(match.group(1))
+    return None
+
+
+def build_stats(wikitext, page_name, revid=None, columns=None):
+    """1枚分の性能値をまとめた辞書を返す。性能値が無ければ None。
+
+    columns は、そのカードの「レベル表の列見出し → 性能値の項目」の対応表
+    （src/data/card_stats_columns.json）。表に数値が直接書かれている列は、
+    変数が古いまま残っていることがあるため、表の値を優先する。
+    """
     if not wikitext:
         return None
 
     variables = parse_variables(wikitext)
     units, leftovers = build_units(variables)
     attributes = parse_attributes(wikitext)
+
+    changed, unmapped = apply_level_values(
+        units, parse_level_values(wikitext), columns)
+    for label, target, before, after in changed:
+        logging.info("%s: %s を表の値にしました（%s → %s、列「%s」）",
+                     page_name, target, before, after, label)
+    if unmapped:
+        logging.warning(
+            "%s: レベル表に数値が直接書かれた列があり、対応表に未登録です: %s",
+            page_name, "、".join(unmapped))
+
+    # 攻撃速度の変数が無いカードは、属性表の値を使う。秒間ダメージの計算に要る。
+    if units and not any(base_stat(k) == "atk_speed" for u in units for k in u):
+        speed = _hit_speed(attributes)
+        if speed:
+            units[0]["atk_speed"] = speed
+
     if not units and not attributes:
         return None
 

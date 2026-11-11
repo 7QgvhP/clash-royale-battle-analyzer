@@ -14,8 +14,9 @@ from src.api import mastery as mastery_api
 from src.api import upgrades as upgrades_api
 from src.api.client import ApiError, ClashRoyaleClient
 from src.api.models import parse_battle
-from src.config import (CARD_IMAGE_DIR, CARD_NAMES_PATH, CARD_STATS_MANUAL_PATH,
-                        CARD_WEB_DIR, LOG_DIR, MASTERY_NAMES_PATH, get_config)
+from src.config import (CARD_IMAGE_DIR, CARD_NAMES_PATH, CARD_STATS_COLUMNS_PATH,
+                        CARD_STATS_MANUAL_PATH, CARD_WEB_DIR, LOG_DIR,
+                        MASTERY_NAMES_PATH, get_config)
 from src.db import repository as repo
 
 
@@ -67,6 +68,15 @@ def load_stats_manual():
         return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
 
 
+def load_stats_columns():
+    """レベル表の列見出しと、性能値の項目との対応表を読み込む。"""
+    if not CARD_STATS_COLUMNS_PATH.exists():
+        logging.warning("レベル表の列の対応表がありません: %s", CARD_STATS_COLUMNS_PATH)
+        return {}
+    with CARD_STATS_COLUMNS_PATH.open(encoding="utf-8") as f:
+        return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+
+
 def update_card_stats(conn):
     """カードの性能値を Clash Royale Wiki から取得して保存する。
 
@@ -85,12 +95,14 @@ def update_card_stats(conn):
                  len(names), cardstats_api.BATCH_SIZE)
     pages = cardstats_api.fetch_pages(names)
     manual = load_stats_manual()
+    columns = load_stats_columns()
 
     saved, missing = 0, []
     for card in cards:
         name_en = card["name_en"]
         wikitext, revid = pages.get(name_en, (None, None))
-        stats = cardstats_api.build_stats(wikitext, name_en, revid)
+        stats = cardstats_api.build_stats(wikitext, name_en, revid,
+                                          columns.get(name_en))
 
         # 補完ファイルの内容を上書きで合成する
         extra = manual.get(name_en)
