@@ -329,8 +329,15 @@ def spells_view():
             item["icon_url"] = (urlmod.asset_url("cards/" + item["icon"], STATIC_MODE)
                                 if item["icon"] else None)
 
+        # 呪文を選んだときの既定のレベルは、見ているプレイヤーの所持レベルにする。
+        # 静的サイトではこのページを1つだけ書き出すため、全プレイヤーぶんを埋め込み、
+        # どのプレイヤーかはブラウザ側で ?from= から選ぶ。
+        owned = spells_analysis.owned_levels(conn, {s["card_id"] for s in data["spells"]})
+        data["owned"] = {urlmod.player_slug(tag): levels for tag, levels in owned.items()}
+        data["player"] = urlmod.player_slug(filters.player_tag)
+
         ctx = base_context(conn, filters)
-        # プレイヤー切替はサマリーへ向ける。この画面はプレイヤーに依存しない。
+        # プレイヤー切替はサマリーへ向ける。この画面は既定のレベル以外はプレイヤーに依存しない。
         ctx.update({"active": "summary", "nav_active": "spells", "calc": data})
         return render_template("spells.html", **ctx)
     finally:

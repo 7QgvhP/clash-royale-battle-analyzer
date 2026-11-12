@@ -113,9 +113,20 @@
     return spell.variants[parseInt(variantSelect.value || '0', 10)] || spell.variants[0];
   }
 
-  function fillLevels(spell, keep) {
+  // 見ているプレイヤーの、その呪文の所持レベル。未入手なら null。
+  // 静的サイトでは ?from=<プレイヤー>_... で、どのプレイヤーから来たかを受け取る。
+  function ownedLevel(spell) {
+    var from = (location.search.match(/[?&]from=([^&]+)/) || [])[1];
+    var player = from ? decodeURIComponent(from).split('_')[0] : DATA.player;
+    var owned = (DATA.owned || {})[player] || {};
+    return owned[String(spell.card_id)] || null;
+  }
+
+  // candidates の中で、その呪文に存在する最初のレベルを選ぶ。どれも無ければ11
+  function fillLevels(spell, candidates) {
     var levels = spell.levels;
-    var want = keep && levels.indexOf(keep) >= 0 ? keep : (levels.indexOf(11) >= 0 ? 11 : levels[0]);
+    var want = candidates.filter(function (lv) { return lv && levels.indexOf(lv) >= 0; })[0];
+    if (!want) want = levels.indexOf(11) >= 0 ? 11 : levels[0];
     levelSelect.innerHTML = levels.map(function (lv) {
       return '<option value="' + lv + '"' + (lv === want ? ' selected' : '') + '>' + lv + '</option>';
     }).join('');
@@ -243,9 +254,10 @@
     return params;
   }
 
-  function onSpellChange(keepLevel) {
+  // 呪文を選んだときのレベルは、所持レベルを優先する。未入手なら直前のレベルを引き継ぐ
+  function onSpellChange(firstLevel, keepLevel) {
     var spell = spellById(spellSelect.value);
-    fillLevels(spell, keepLevel);
+    fillLevels(spell, [firstLevel, ownedLevel(spell), keepLevel]);
     fillVariants(spell);
   }
 
@@ -256,12 +268,13 @@
     var fireball = DATA.spells.filter(function (s) { return s.card_id === 28000000; })[0];
     if (fireball) spellSelect.value = String(fireball.card_id);
   }
+  // URL にレベルの指定があれば、それを優先する（共有したリンクを開いたとき）
   onSpellChange(parseInt(initial.lv, 10));
   if (initial.v && !variantWrap.hidden) variantSelect.value = initial.v;
   render();
 
   spellSelect.addEventListener('change', function () {
-    onSpellChange(spellLevel());
+    onSpellChange(null, spellLevel());
     render(); saveHash();
   });
   [levelSelect, variantSelect].forEach(function (el) {

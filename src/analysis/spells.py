@@ -19,6 +19,7 @@
 import json
 
 from src.analysis.cardstats import GAME_MAX_LEVEL, level_range, scale, unit_name
+from src.db import repository as repo
 
 # 判定の対象にする呪文と、そのダメージの取り出し方。キーは英語カード名。
 #   key          … ダメージとして使う値（既定 dmg）
@@ -181,3 +182,23 @@ def calculator_data(conn):
                 spells.append(spell)
         units.extend(_units(card, stats))
     return {"spells": spells, "units": units}
+
+
+def owned_levels(conn, spell_ids):
+    """プレイヤーごとに、所持している呪文のレベル（ゲーム内の表記）を返す。
+
+    画面で呪文を選んだときに、既定のレベルとして使う。
+    戻り値は {プレイヤータグ: {カードID(文字列): レベル}}。未入手の呪文は含めない。
+    """
+    game_max = repo.game_max_level(conn) or GAME_MAX_LEVEL
+    result = {}
+    for player in repo.list_players(conn):
+        levels = {}
+        for have in repo.player_cards(conn, player["player_tag"]):
+            if (have["card_id"] in spell_ids and have["level"] is not None
+                    and have["max_level"]):
+                # APIのレベルはレアリティごとの通し番号。カード育成の画面と同じく
+                # ゲーム内の表記に直す。
+                levels[str(have["card_id"])] = have["level"] + (game_max - have["max_level"])
+        result[player["player_tag"]] = levels
+    return result
