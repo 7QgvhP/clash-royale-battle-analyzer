@@ -9,6 +9,16 @@
 
 ---
 
+## [1.30.1] - 2026-11-15
+
+### 変更
+
+- ドキュメントを、全プロジェクト共通のドキュメント標準に沿って整備した。README を入口として短くし、仕様（`docs/spec.md`）、使用方法（`docs/usage.md`）、設計（`docs/architecture.md`）、開発（`docs/development.md`）、設定（`docs/configuration.md`）、設計判断記録（`docs/adr/`）に分けた。`CLAUDE.md` に、ドキュメントの更新ルールを加えた
+- 要件定義書（`docs/requirements.md`）は仕様・設計に、APIトークンの取得手順（`docs/setup-api-token.md`）と公開の設定手順（`docs/setup-publish.md`）は使用方法に移した。要件定義書の「確定した設計判断の一覧」は ADR にした。
+- バージョンの記録場所から `docs/requirements.md` を外した（ファイルを統合したため）。
+
+ツールの動作に変更は無い。
+
 ## [1.30.0] - 2026-11-12
 
 ### 追加
