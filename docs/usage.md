@@ -1,12 +1,9 @@
 # 使用方法
 
-以下は 2026-11-15 に実行して動作を確認した: `python -m src.collector.collect --help`、`python -m src.web.app --help`、`python -m src.exporter.publish --help`、`python -m src.exporter.static_export --help`、`python scripts/backup.py --help`、`python -m tests.check_baseline`。
-それ以外（収集、診断、公開、タスクの登録、カードの更新など）は、API・データベース・公開サイト・タスクスケジューラへの書き込みや通信を伴うため実行しておらず「未検証」としている。
-
 ## 前提条件
 
 - Windows（定期収集はタスクスケジューラを使う）。
-- Python。TODO(要確認): 必要な Python のバージョンは記録がない。
+- Python。
 - Supercell の開発者アカウントと API トークン、自分のプレイヤータグ。
 - 公開サイトを使う場合は、Cloudflare のアカウントと Node.js（`npx` で wrangler を使う）。
 
@@ -476,7 +473,7 @@ npx --yes wrangler@latest login
 
 ブラウザが開くので、Cloudflareへのアクセスを許可する。**この操作は最初の1回だけ。**
 
-> `npx` は Node.js に付属するコマンド。すでにインストール済みであることを確認済み。
+> `npx` は Node.js に付属するコマンド。
 
 
 #### 3. 静的サイトを書き出す

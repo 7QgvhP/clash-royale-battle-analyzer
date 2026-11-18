@@ -2,14 +2,12 @@
 
 ## 全体構成
 
-> 旧要件定義書の図をそのまま移した。現在の運用では、収集は毎日23時に1回（「データの流れ」を参照）で、ダッシュボードのポートは `8730`（`config.yaml` の `web.port`）。図の「1時間おき」「5000」は作成時点の値。
-
 ```
 [Supercell公式API]
         |
         | HTTPS（proxy.royaleapi.dev 経由）
         v
-[収集スクリプト collect.py]  <-- Windowsタスクスケジューラが1時間おきに起動
+[収集スクリプト collect.py]  <-- Windowsタスクスケジューラが毎日23時に起動
         |
         | 差分をUPSERT
         v
@@ -20,7 +18,7 @@
 [分析モジュール analysis/]
         |
         v
-[Flask Webダッシュボード app.py]  <-- ブラウザ http://127.0.0.1:5000
+[Flask Webダッシュボード app.py]  <-- ブラウザ http://127.0.0.1:8730
 ```
 
 収集と閲覧は完全に分離する。収集は無人で動き続け、ダッシュボードは見たいときだけ起動する。
@@ -35,7 +33,7 @@ clash-royale-battle-analyzer/
 ├── .gitignore
 ├── config.yaml               # 最低試合数・類似度しきい値・対象モード等
 ├── docs/
-│   └── spec.md ほか         # ドキュメント一式（旧 requirements.md・setup-*.md を統合）
+│   └── spec.md ほか         # ドキュメント一式
 ├── src/
 │   ├── api/
 │   │   ├── client.py         # APIクライアント（プロキシ切替・リトライ）
@@ -116,13 +114,13 @@ clash-royale-battle-analyzer/
 - ベースURL（プロキシ経由）: `https://proxy.royaleapi.dev/v1`
 - ベースURL（直接）: `https://api.clashroyale.com/v1`
 - 認証: `Authorization: Bearer <APIトークン>`
-- **`User-Agent` の設定は必須**（§2.4 参照）。未設定だとCloudflareに遮断される
+- **`User-Agent` の設定は必須**（[spec.md](spec.md#プロキシ経由の通信にはuser-agentの設定が必須) 参照）。未設定だとCloudflareに遮断される
 - プレイヤータグの `#` はURLエンコードして `%23` とする
 
 ### APIから取得できるデータ
 
 公式APIで取得できる内容の一覧。**本ツールが実際に使っているのは一部だけ**なので、
-分析軸を増やしたくなったときの参照用として記載する。すべて 2026-09-08 に実測して確認した。
+分析軸を増やしたくなったときの参照用として記載する。2026-09-08 時点の API の応答に基づく。
 
 #### エンドポイント一覧
 
@@ -223,7 +221,7 @@ iconUrls.heroMedium        ヒーロー版の画像
 | データ | 使える分析の例 |
 |---|---|
 | `elixirLeaked` | エリクサーを溢れさせた試合の勝率 |
-| `princessTowersHitPoints` | 惜敗か大敗かの判別（フェーズ2で予定） |
+| `princessTowersHitPoints` | 惜敗か大敗かの判別（未実装） |
 | `clan` | クラン仲間との対戦成績 |
 | `cards`（所持一覧） | 未所持カードや低レベルカードの把握 |
 | `leagueStatistics` | シーズンごとの成績比較 |
@@ -237,7 +235,7 @@ iconUrls.heroMedium        ヒーロー版の画像
 #### 取得できないもの
 
 - **運用開始より前の対戦履歴**（`battlelog` は直近約30件のみ）
-- カード名の日本語表記（`Accept-Language` などの言語指定に非対応。実測で確認済み）
+- カード名の日本語表記（`Accept-Language` などの言語指定に非対応）
 - リプレイの内容、対戦中の操作ログ
 - 他プレイヤーの非公開情報（そもそも公開情報しか返さない）
 
