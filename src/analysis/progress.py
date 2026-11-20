@@ -45,7 +45,32 @@ def mastery_caps(conn):
 def upgrade_table(conn):
     """レベルアップに必要な枚数・ゴールドの表を返す。未取得なら None。"""
     saved = repo.get_meta(conn, "upgrade_table")
-    return json.loads(saved) if saved else None
+    return _align_card_levels(json.loads(saved)) if saved else None
+
+
+def _align_card_levels(table):
+    """必要枚数の表の開始レベルを、必要ゴールドの表に揃える。
+
+    Wiki の必要枚数の表では、チャンピオンの列だけが1行下にずれている
+    （入手の1枚がレベル12の行にあるが、チャンピオンはレベル11から始まり、
+    ゴールドの表もレベル12に上げる分から並んでいる）。このままだと、
+    レベル11のチャンピオンでも1枚あれば上げられると判定してしまう。
+
+    ゴールドの表の最初の行は「開始レベル+1」に上げる分なので、そこから開始
+    レベルを求め、必要枚数の列の最初の行（入手の1枚）がそれより後ろにある
+    レアリティは、その分だけ前へずらす。ずらした結果、最後のレベルの必要枚数は
+    分からなくなる（表に無い扱いになる）。
+    """
+    cards, gold = table.get("cards") or {}, table.get("gold") or {}
+    for rarity, column in cards.items():
+        gold_column = gold.get(rarity) or {}
+        if not column or not gold_column:
+            continue
+        start = min(int(lv) for lv in gold_column) - 1
+        shift = min(int(lv) for lv in column) - start
+        if shift > 0:
+            cards[rarity] = {str(int(lv) - shift): n for lv, n in column.items()}
+    return table
 
 
 def _required(table, kind, rarity, level):
